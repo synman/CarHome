@@ -75,15 +75,22 @@ public class MusicRetriever {
 
         // retrieve the indices of the columns where the ID and title of the song are
         int titleColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.TITLE);
+        int artistColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.ARTIST);
         int idColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media._ID);
+        int durationColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.DURATION);
 
         Log.i(TAG, "Title column index: " + String.valueOf(titleColumn));
         Log.i(TAG, "ID column index: " + String.valueOf(titleColumn));
+        Log.i(TAG, "Artist column index: " + String.valueOf(artistColumn));
 
         // add each song to mItems
         do {
             Log.i(TAG, "ID: " + cur.getString(idColumn) + " Title: " + cur.getString(titleColumn));
-            mItems.add(new Item(cur.getLong(idColumn), cur.getString(titleColumn)));
+            mItems.add(new Item(cur.getLong(idColumn), 
+            					cur.getString(titleColumn), 
+            					cur.getString(artistColumn),
+            					cur.getInt(durationColumn)));
+            
         } while (cur.moveToNext());
 
         Log.i(TAG, "Done querying media. MusicRetriever is ready.");
@@ -102,14 +109,21 @@ public class MusicRetriever {
     public class Item {
         long id;
         String title;
+        String artist;
+        int duration;
 
-        public Item(long id, String title) {
+        public Item(long id, String title, String artist, int duration) {
             this.id = id;
             this.title = title;
+            this.artist = artist;
+            this.duration = duration;
         }
 
         public long getId() { return id; }
         public String getTitle() { return title; }
+        public String getArtist() { return artist; }
+        public int getDuration() { return duration; }
+        
         public Uri getURI() {
             return ContentUris.withAppendedId(
                     android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);

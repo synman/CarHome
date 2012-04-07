@@ -2,22 +2,73 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="vertical" >
+    android:orientation="vertical">
 
     <ImageView
         android:id="@+id/imageView1"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:src="@drawable/carhome1" android:layout_centerInParent="true" android:scaleType="fitCenter"/>
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/carhome1" android:background="@drawable/glowy_hex"/>
 
     <Button
-        android:id="@+id/btnPlay"
+        android:id="@+id/playbutton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="29dp"
-        android:background="@drawable/playbutton"
+        android:background="@drawable/playicon"
+        android:freezesText="true" 
+        android:layout_centerHorizontal="true" 
+        android:layout_alignParentBottom="true" 
+        android:layout_marginLeft="10dp" 
+        android:layout_marginRight="10dp" 
+        android:layout_marginBottom="30dp"/>
+
+    <Button
+        android:id="@+id/forwardbutton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/forwardicon"
+        android:freezesText="true" 
+        android:layout_toRightOf="@id/playbutton" 
+        android:layout_alignBottom="@id/playbutton"/>
+    
+    <Button
+        android:id="@+id/rewindbutton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/playbutton"
+        android:layout_toLeftOf="@+id/playbutton"
+        android:background="@drawable/rewindicon"
         android:freezesText="true" />
+
+    <Button
+        android:id="@+id/stopbutton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@+id/rewindbutton"
+        android:background="@drawable/stopicon"
+        android:freezesText="true" 
+        android:layout_marginRight="20dp" 
+        android:layout_alignBottom="@id/playbutton"/>
+
+    <Button
+        android:id="@+id/mutebutton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/forwardbutton"
+        android:background="@drawable/muteicon"
+        android:freezesText="true" 
+        android:layout_marginLeft="20dp" 
+        android:layout_alignBottom="@id/playbutton"/>
+
+    <SeekBar
+        android:id="@+id/position"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/playbutton"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="40dp" android:minWidth="500dp" android:maxWidth="500dp" android:max="100" android:progress="0"/>
 
 </RelativeLayout>

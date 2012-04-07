@@ -22,11 +22,14 @@ import android.app.UiModeManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -34,6 +37,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 
 public class CarHomeActivity extends Activity implements OnClickListener {
 
@@ -41,11 +46,22 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	private Resources res;
 
 	private AudioManager mAudioManager;
-    private ComponentName mRemoteControlResponder;
+	
+	RemoteControlReceiver mMediaButtonReceiver;
+	IntentFilter mediaFilter;
+
+    private Handler handler;
 
     private Button mPlayButton;
+    private Button mStopButton;
+    private Button mForwardButton;
+    private Button mRewindButton;
+    private Button mMuteButton;
     
-//	private GridView statsGrid;
+    private SeekBar mPositionBar;
+
+    private boolean mMuted = false;
+    
 //	private Menu myMenu = null;
 
 	@Override
@@ -56,13 +72,52 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		res = getResources();
+		handler = new Handler();
 
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        mRemoteControlResponder = new ComponentName(getPackageName(),
-                RemoteControlReceiver.class.getName());
         
-        mPlayButton = (Button) findViewById(R.id.btnPlay);
+    	mMediaButtonReceiver = new RemoteControlReceiver();
+    	mediaFilter = new IntentFilter(Intent.ACTION_MEDIA_BUTTON);
+    	mediaFilter.setPriority(Integer.MAX_VALUE);
+
+    	registerReceiver(mMediaButtonReceiver, mediaFilter);
+
+        mPlayButton = (Button) findViewById(R.id.playbutton);
         mPlayButton.setOnClickListener(this);
+        
+        mStopButton = (Button) findViewById(R.id.stopbutton);
+        mStopButton.setOnClickListener(this);
+        
+        mForwardButton = (Button) findViewById(R.id.forwardbutton);
+        mForwardButton.setOnClickListener(this);
+        
+        mRewindButton = (Button) findViewById(R.id.rewindbutton);
+        mRewindButton.setOnClickListener(this);
+        
+        mMuteButton = (Button) findViewById(R.id.mutebutton);
+        mMuteButton.setOnClickListener(this);
+        
+        mPositionBar = (SeekBar) findViewById(R.id.position);
+        mPositionBar.setMax(1);
+        mPositionBar.setProgress(0);
+        mPositionBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+			public void onProgressChanged(SeekBar arg0, int position, boolean fromTouch) {
+				if (fromTouch) MusicService.setPosition(position);
+				
+			}
+
+			public void onStartTrackingTouch(SeekBar arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			public void onStopTrackingTouch(SeekBar arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+        	
+        });
         
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
@@ -83,10 +138,37 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     @Override
     public void onResume() {
         super.onResume();
-        mAudioManager.registerMediaButtonEventReceiver(
-                mRemoteControlResponder);
+        handler.post(oneSecondHandler);
     }
     
+    private Runnable oneSecondHandler = new Runnable() {
+
+		public void run() {
+
+			if (MusicService.getPosition() != 0) {
+				mPositionBar.setMax(MusicService.duration);
+				mPositionBar.setProgress(MusicService.getPosition());
+			} else {
+				mPositionBar.setMax(1);
+				mPositionBar.setProgress(0);
+			}
+			
+			if (MusicService.mState == MusicService.State.Playing) {
+				mPlayButton.setBackgroundResource(R.drawable.pauseicon);
+			} else {
+				mPlayButton.setBackgroundResource(R.drawable.playicon);
+			}
+			
+			handler.postDelayed(this, 1000);
+		} 	
+    };
+    
+    @Override
+    public void onPause() {
+    	super.onPause();
+    	handler.removeCallbacks(oneSecondHandler);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -94,8 +176,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         UiModeManager manager = (UiModeManager)getSystemService(Context.UI_MODE_SERVICE);    
         manager.disableCarMode(UiModeManager.DISABLE_CAR_MODE_GO_HOME);
 
-        mAudioManager.unregisterMediaButtonEventReceiver(
-                mRemoteControlResponder);
+        unregisterReceiver(mMediaButtonReceiver);
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -138,13 +219,40 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     }
 
 	public void onClick(View target) {
-        if (target == mPlayButton) {
-            startService(new Intent(MusicService.ACTION_PLAY));
-            startService(new Intent(MusicService.ACTION_SKIP));
-        }
-        	
 		
-	}    
+        if (target == mPlayButton) {
+        	if (MusicService.mState == MusicService.State.Paused) {
+        		startService(new Intent(MusicService.ACTION_PLAY));
+        	} else {
+        		if (MusicService.mState == MusicService.State.Playing) {
+        		startService(new Intent(MusicService.ACTION_PAUSE));
+        		} else {
+        			startService(new Intent(MusicService.ACTION_SKIP));
+        		}
+            }
+        }
 
+        if (target == mStopButton) {
+            startService(new Intent(MusicService.ACTION_STOP));
+        }
+        
+        if (target == mForwardButton) {
+        	startService(new Intent(MusicService.ACTION_SKIP));
+        }
+        
+        if (target == mRewindButton) {
+        	startService(new Intent(MusicService.ACTION_REWIND));
+        }
+
+        if (target == mMuteButton) {
+        	mMuted = ! mMuted;        	
+        	mAudioManager.setStreamMute(AudioManager.STREAM_MUSIC, mMuted);
+        	if (mMuted) {
+        		mMuteButton.setBackgroundResource(R.drawable.unmuteicon);
+        	} else {
+        		mMuteButton.setBackgroundResource(R.drawable.muteicon);
+        	}
+        }
+	}    
 
 }
