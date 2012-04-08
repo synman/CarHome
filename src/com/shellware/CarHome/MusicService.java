@@ -28,6 +28,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -99,16 +100,17 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
     private AudioFocus mAudioFocus = AudioFocus.NoFocusNoDuck;
 
     // the items (songs) we have queried
-    List<Item> mHistory = new ArrayList<Item>();
+    private static List<Item> mHistory = new ArrayList<Item>();
     
-    public static int duration = 0;
-    public static int progress = 0;
-    
-    // title of the song we are currently playing
-    private String mSongTitle = "";
-    
-    // artist of the song we are currently playing
-    private String mArtistName = "";
+//    public static int duration = 0;
+//    public static int progress = 0;
+//    public static Bitmap artwork = null;
+//    
+//    // title of the song we are currently playing
+//    private String mSongTitle = "";
+//    
+//    // artist of the song we are currently playing
+//    private String mArtistName = "";
 
     // whether the song we are playing is streaming from the network
     private boolean mIsStreaming = false;
@@ -232,7 +234,7 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
         else if (mState == State.Paused) {
             // If we're paused, just continue playback and restore the 'foreground service' state.
             mState = State.Playing;
-            setUpAsForeground(mArtistName + " - " + mSongTitle);
+            setUpAsForeground(getCurrentItem().getArtist() + " - " + getCurrentItem().getTitle());
             configAndStartMediaPlayer();
         }
     }
@@ -260,22 +262,18 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
         		mPlayer.seekTo(0);
         	} else {
                 try {
+                	if (mHistory.size() == 0) return;
                 	mHistory.remove(mHistory.size() - 1);
-                	
-                	if (mHistory.size() == 0) {
-                		return;
-                	}
+                 	if (mHistory.size() == 0) return;
             		
                     // set the source of the media player a a content URI
                     createMediaPlayerIfNeeded();
-                    mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                	 
-					mPlayer.setDataSource(getApplicationContext(), mHistory.get(mHistory.size() - 1).getURI());
-	                mSongTitle = mHistory.get(mHistory.size() - 1).getTitle();
-	                mArtistName = mHistory.get(mHistory.size() - 1).getArtist();
-	                duration = mHistory.get(mHistory.size() - 1).getDuration();
 		            mState = State.Preparing;
-		            setUpAsForeground(mArtistName + " - " + mSongTitle);
+
+                    mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+  					mPlayer.setDataSource(getApplicationContext(), getCurrentItem().getURI());
+	                
+		            setUpAsForeground(getCurrentItem().getArtist() + " - " + getCurrentItem().getTitle());
 		
 		            // starts preparing the media player in the background. When it's done, it will call
 		            // our OnPreparedListener (that is, the onPrepared() method on this class, since we set
@@ -412,8 +410,7 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
                 createMediaPlayerIfNeeded();
                 mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 mPlayer.setDataSource(manualUrl);
-                mSongTitle = manualUrl;
-                mArtistName = "N/A";
+
                 mIsStreaming = manualUrl.startsWith("http:") || manualUrl.startsWith("https:");
             }
             else {
@@ -431,14 +428,11 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
                 createMediaPlayerIfNeeded();
                 mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 mPlayer.setDataSource(getApplicationContext(), item.getURI());
-                mSongTitle = item.getTitle();
-                mArtistName = item.getArtist();
-                duration = item.getDuration();
             }
 
 
             mState = State.Preparing;
-            setUpAsForeground(mArtistName + " - " + mSongTitle);
+            setUpAsForeground(getCurrentItem().getArtist() + " - " + getCurrentItem().getTitle());
 
             // starts preparing the media player in the background. When it's done, it will call
             // our OnPreparedListener (that is, the onPrepared() method on this class, since we set
@@ -469,7 +463,7 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
     public void onPrepared(MediaPlayer player) {
         // The media player is done preparing. That means we can start playing!
         mState = State.Playing;
-        updateNotification(mArtistName + " - " + mSongTitle);
+        updateNotification(getCurrentItem().getArtist() + " - " + getCurrentItem().getTitle());
         configAndStartMediaPlayer();
     }
 
@@ -566,5 +560,11 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
     	if (mState == State.Paused || mState == State.Playing) {
     		mPlayer.seekTo(position);
     	}
+    }
+    public static List<Item> getPlayedItems() {
+    	return mHistory;
+    }
+    public static Item getCurrentItem() {
+    	return mHistory.get(mHistory.size() - 1);
     }
 }

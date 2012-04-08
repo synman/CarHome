@@ -2,5 +2,7 @@
 <resources>
 
     <string name="app_name">RX-8 Home</string>
+    <string name="menu_bluetooth">Bluetooth</string>
+    <string name="menu_quit">Exit</string>
 
 </resources>

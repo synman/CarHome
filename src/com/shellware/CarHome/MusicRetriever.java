@@ -16,6 +16,8 @@
 
 package com.shellware.CarHome;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -23,6 +25,8 @@ import java.util.Random;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.util.Log;
 
@@ -37,6 +41,8 @@ public class MusicRetriever {
 
     ContentResolver mContentResolver;
 
+    private static final Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
+    
     // the items (songs) we have queried
     List<Item> mItems = new ArrayList<Item>();
 
@@ -76,6 +82,7 @@ public class MusicRetriever {
         // retrieve the indices of the columns where the ID and title of the song are
         int titleColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.TITLE);
         int artistColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.ARTIST);
+        int albumIdColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.ALBUM_ID);
         int idColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media._ID);
         int durationColumn = cur.getColumnIndex(android.provider.MediaStore.Audio.Media.DURATION);
 
@@ -83,13 +90,38 @@ public class MusicRetriever {
         Log.i(TAG, "ID column index: " + String.valueOf(titleColumn));
         Log.i(TAG, "Artist column index: " + String.valueOf(artistColumn));
 
+        long lastAlbumId = 0;
+        Bitmap artwork = null;
+        int artworkSize = 0;
+        
         // add each song to mItems
         do {
-            Log.i(TAG, "ID: " + cur.getString(idColumn) + " Title: " + cur.getString(titleColumn));
+        	Long albumId = cur.getLong(albumIdColumn);
+        	
+        	if (albumId != lastAlbumId) {        		
+	            Uri artUri = ContentUris.withAppendedId(sArtworkUri, albumId);
+	            ContentResolver res = this.getContentResolver();
+	            InputStream in = null;
+	            
+	            artworkSize = 0;
+	            
+	    		try {
+	    			in = res.openInputStream(artUri);
+	    	        artwork = BitmapFactory.decodeStream(in);
+	    	        artworkSize = artwork.getByteCount();
+	    	        lastAlbumId = albumId;
+	    		} catch (FileNotFoundException e) {
+	    			artworkSize = 0;
+	    			lastAlbumId = 0;
+	    		}
+        	}
+        	
+        	Log.i(TAG, "ID: " + cur.getString(idColumn) + " Album: " + cur.getString(albumIdColumn) + " Art: " + artworkSize);
             mItems.add(new Item(cur.getLong(idColumn), 
             					cur.getString(titleColumn), 
             					cur.getString(artistColumn),
-            					cur.getInt(durationColumn)));
+            					cur.getInt(durationColumn),
+            					artworkSize == 0 ? null : artwork));
             
         } while (cur.moveToNext());
 
@@ -107,22 +139,25 @@ public class MusicRetriever {
     }
 
     public class Item {
-        long id;
-        String title;
-        String artist;
-        int duration;
+        private long id;
+        private String title;
+        private String artist;
+        private int duration;
+        private Bitmap albumArt;
 
-        public Item(long id, String title, String artist, int duration) {
+        public Item(long id, String title, String artist, int duration, Bitmap albumArt) {
             this.id = id;
             this.title = title;
             this.artist = artist;
             this.duration = duration;
+            this.albumArt = albumArt;
         }
 
         public long getId() { return id; }
         public String getTitle() { return title; }
         public String getArtist() { return artist; }
         public int getDuration() { return duration; }
+        public Bitmap getAlbumArt() { return albumArt; }
         
         public Uri getURI() {
             return ContentUris.withAppendedId(
