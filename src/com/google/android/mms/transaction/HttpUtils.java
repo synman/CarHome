@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.android.mms.transaction;
+package com.google.android.mms.transaction;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -29,8 +29,8 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.params.HttpConnectionParams;
 
-import com.android.mms.MmsConfig;
-import com.android.mms.LogTag;
+import com.google.android.mms.LogTag;
+import com.google.android.mms.MmsConfig;
 
 import android.content.Context;
 import android.net.http.AndroidHttpClient;

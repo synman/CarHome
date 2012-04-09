@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.mms;
+package com.google.android.mms;
 
 import java.io.IOException;
 

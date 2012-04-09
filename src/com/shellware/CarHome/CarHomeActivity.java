@@ -62,14 +62,14 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
-import com.android.mms.APNHelper;
-import com.android.mms.APNHelper.APN;
-import com.android.mms.transaction.HttpUtils;
+import com.google.android.mms.APNHelper;
+import com.google.android.mms.APNHelper.APN;
 import com.google.android.mms.pdu.EncodedStringValue;
 import com.google.android.mms.pdu.PduBody;
 import com.google.android.mms.pdu.PduComposer;
 import com.google.android.mms.pdu.PduPart;
 import com.google.android.mms.pdu.SendReq;
+import com.google.android.mms.transaction.HttpUtils;
 import com.shellware.CarHome.MyLocation.LocationResult;
 
 public class CarHomeActivity extends Activity implements OnClickListener {

@@ -22,7 +22,7 @@
     <application android:icon="@drawable/rx8logo" 
         			android:label="@string/app_name" 
         			android:description="@string/app_name">
-        <activity android:name="CarHomeActivity"
+        <activity android:name=".CarHomeActivity"
                   android:label="@string/app_name"
         			 android:icon="@drawable/rx8logo" android:screenOrientation="landscape">
             <intent-filter>
@@ -33,7 +33,7 @@
             </intent-filter>
         </activity>
 
-        <service android:exported="false" android:name="MusicService">
+        <service android:exported="false" android:name=".MusicService">
             <intent-filter>
                 <action android:name="com.shellware.CarHome.action.PLAY" />
                 <action android:name="com.shellware.CarHome.action.PAUSE" />
@@ -54,7 +54,7 @@
 		    </intent-filter>
 		</receiver>
 		
-        <receiver android:name="PokeBackReceiver">
+        <receiver android:name=".PokeBackReceiver">
             <intent-filter android:priority="2147483647">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>

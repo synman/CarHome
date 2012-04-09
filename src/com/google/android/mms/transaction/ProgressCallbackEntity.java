@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.android.mms.transaction;
+package com.google.android.mms.transaction;
 
 import org.apache.http.entity.ByteArrayEntity;
 
