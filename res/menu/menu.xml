@@ -4,7 +4,10 @@
     <item android:id="@+id/BTMenuItem" android:showAsAction="ifRoom"
           android:icon="@drawable/bluetooth_off" android:title="@string/menu_bluetooth" />
     
-    <item android:id="@+id/quitMenuItem" android:showAsAction="ifRoom"
+    <item android:id="@+id/cameraMenuItem" android:showAsAction="ifRoom"
+          android:icon="@drawable/camera" android:title="@string/menu_camera" />
+    
+    <item android:id="@+id/quitMenuItem" android:showAsAction="never"
           android:icon="@drawable/quit" android:title="@string/menu_quit"/>
     
 </menu>

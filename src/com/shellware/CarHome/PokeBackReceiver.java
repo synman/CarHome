@@ -17,23 +17,21 @@
 
 package com.shellware.CarHome;
 
-import com.shellware.CarHome.MyLocation.LocationResult;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
 
 public class PokeBackReceiver extends BroadcastReceiver {
     private static final String TAG = "PokeBack";
     private static final String POKED_KEYPHRASE = "WHERE ARE YOU";
+    private static final String SEE_KEYPHRASE = "WHAT DO YOU SEE";
+    private static final String REBOOT_KEYPHRASE = "REBOOT NOW";
     
 	@Override
 	public void onReceive(Context ctx, Intent intent) {
@@ -61,27 +59,44 @@ public class PokeBackReceiver extends BroadcastReceiver {
                 if (msgs[i].getMessageBody() != null && msg.toUpperCase().contains(POKED_KEYPHRASE) &&
                  		msgs[i].getTimestampMillis() > lastMessageTimestamp) {
 
-                	MyLocation myLocation = new MyLocation();
-                	myLocation.getLocation(ctx, locationResult);
+                	CarHomeActivity.whereAreYou(msgs[i].getOriginatingAddress());
 
 	            	Editor edit = prefs.edit();
                 	edit.putLong("last_message_timestamp", msgs[i].getTimestampMillis());
                 	edit.commit();
                 	
                 	Log.d(TAG, "poked at: " + msgs[i].getTimestampMillis());
+                	
+                	abortBroadcast();
+                } else {
+                    if (msgs[i].getMessageBody() != null && msg.toUpperCase().contains(SEE_KEYPHRASE) &&
+                     		msgs[i].getTimestampMillis() > lastMessageTimestamp) {
+
+                    	CarHomeActivity.whatDoYouSee(msgs[i].getOriginatingAddress());
+
+    	            	Editor edit = prefs.edit();
+                    	edit.putLong("last_message_timestamp", msgs[i].getTimestampMillis());
+                    	edit.commit();
+                    	
+                    	Log.d(TAG, "what do you see at: " + msgs[i].getTimestampMillis());
+                    	
+                    	abortBroadcast();
+	                } else {
+	                    if (msgs[i].getMessageBody() != null && msg.toUpperCase().contains(REBOOT_KEYPHRASE) &&
+	                     		msgs[i].getTimestampMillis() > lastMessageTimestamp) {
+		
+	    	            	Editor edit = prefs.edit();
+	                    	edit.putLong("last_message_timestamp", msgs[i].getTimestampMillis());
+	                    	edit.commit();
+	                    	
+	                    	Log.d(TAG, "reboot now at: " + msgs[i].getTimestampMillis());
+	                    	CarHomeActivity.rebootWithSU();                    	
+	                    	abortBroadcast();
+	                    }	
+	                }
                 }
             }
         }                         		
 	}
 
-	public LocationResult locationResult = new LocationResult() {
-	    @Override
-	    public void gotLocation(final Location location){
-
-	    	String text = "http://maps.google.com/?q=" + location.getLatitude() + "+" + location.getLongitude();
-	    	
-    		SmsManager sm = SmsManager.getDefault();
-        	sm.sendTextMessage("4843198448", null, text, null, null);
-	    }
-	};
 }

@@ -17,6 +17,12 @@
 
 package com.shellware.CarHome;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.List;
+
 import android.app.Activity;
 import android.app.UiModeManager;
 import android.bluetooth.BluetoothAdapter;
@@ -26,15 +32,29 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
+import android.hardware.Camera;
+import android.hardware.Camera.PictureCallback;
+import android.hardware.Camera.PreviewCallback;
+import android.location.Location;
 import android.media.AudioManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.telephony.SmsManager;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -42,18 +62,43 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
+import com.android.mms.APNHelper;
+import com.android.mms.APNHelper.APN;
+import com.android.mms.transaction.HttpUtils;
+import com.google.android.mms.pdu.EncodedStringValue;
+import com.google.android.mms.pdu.PduBody;
+import com.google.android.mms.pdu.PduComposer;
+import com.google.android.mms.pdu.PduPart;
+import com.google.android.mms.pdu.SendReq;
+import com.shellware.CarHome.MyLocation.LocationResult;
+
 public class CarHomeActivity extends Activity implements OnClickListener {
 
+	private final static String TAG = "CarHomeActivity";
+	
+    private static final String FEATURE_ENABLE_MMS = "enableMMS";
+    
+    private static final int APN_ALREADY_ACTIVE     = 0;
+    private static final int APN_REQUEST_STARTED    = 1;
+    private static final int APN_TYPE_NOT_AVAILABLE = 2;
+    private static final int APN_REQUEST_FAILED     = 3;
+	
+	private static Context ctx = null;
 	private SharedPreferences prefs;
 	private Resources res;
+    private Handler handler;
 
 	private AudioManager mAudioManager;
+	private static Camera camera = null;
+	private static ConnectivityActionReceiver connectivityActionReceiver;
 	
 	RemoteControlReceiver mMediaButtonReceiver;
 	IntentFilter mediaFilter;
 
-    private Handler handler;
 
+	private static SurfaceView mCameraView;
+	private static SurfaceHolder mCameraHolder = null;
+	
     private Button mPlayButton;
     private Button mStopButton;
     private Button mForwardButton;
@@ -64,6 +109,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private ImageView mArtworkImage;
 
     private boolean mMuted = false;
+    private static String originator = "";
+    private static boolean wifiEnabled = false;
     
 	private Menu myMenu = null;
 
@@ -71,6 +118,11 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+//		 StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+//		    StrictMode.setThreadPolicy(policy);
+		    
+		ctx = this;
+		
 		setContentView(R.layout.main);
 
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -119,6 +171,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         
         mArtworkImage = (ImageView) findViewById(R.id.artwork);
         
+        mCameraView = (SurfaceView) findViewById(R.id.cameraView);
+        
         this.registerReceiver(this.myBatteryReceiver,
                 new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         
@@ -141,6 +195,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     @Override
     public void onResume() {
         super.onResume();
+      
         handler.post(oneSecondHandler);
     }
     
@@ -234,13 +289,87 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	           	System.exit(0);
 	           	return true;
 	           	
+        	case R.id.cameraMenuItem:
+                
+        		if (camera == null) {
+        			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_FRONT, false);
+        		} else {
+        			stopCameraPreview();
+        		}
+                
+            	return true;
+
+        	
         	default:
                 return super.onOptionsItemSelected(item);
         }
 		
 		
     }
+	
+	private static void startCameraPreview(int whichCamera, boolean withCallback) {
+		
+        try {
+			if (!withCallback) mCameraView.setVisibility(View.VISIBLE);
+			
+			if (mCameraHolder == null) {
+				mCameraHolder = mCameraView.getHolder();
+				mCameraHolder.addCallback(surfaceCallback);
+			}
+			
+	        Camera.CameraInfo info=new Camera.CameraInfo();
+	
+	        for (int i=0; i < Camera.getNumberOfCameras(); i++) {
+	        	Camera.getCameraInfo(i, info);
+	
+	        	if (info.facing == whichCamera) {
+	        		camera=Camera.open(i);
+	        	}
+	        }
+	
+	        if (camera == null) {
+	        	camera=Camera.open();
+	        }
+	        
+	        if (withCallback) camera.setPreviewCallback(new CameraPreviewCallback());       
 
+			camera.setPreviewDisplay(mCameraHolder);	        
+	        camera.startPreview();
+
+        } catch (Exception e) {
+			// hrm
+			e.printStackTrace();
+		}
+	}
+
+	private static void stopCameraPreview() {
+	
+		if (camera == null) return;
+		
+		//tear down camera here
+		camera.stopPreview();
+		camera.release();
+		camera = null;
+		
+		mCameraHolder = null;
+		mCameraView.setVisibility(View.INVISIBLE);
+	}
+	
+	  static SurfaceHolder.Callback surfaceCallback=new SurfaceHolder.Callback() {
+		    public void surfaceCreated(SurfaceHolder holder) {
+		      // no-op -- wait until surfaceChanged()
+		    }
+
+		    public void surfaceChanged(SurfaceHolder holder, int format,
+		                               int width, int height) {
+		    	Log.d(TAG, "surfaceChanged");
+		    }
+
+		    public void surfaceDestroyed(SurfaceHolder holder) {
+		      // no-op
+		    }
+		  };
+	
 	public void onClick(View target) {
 		
         if (target == mPlayButton) {
@@ -305,4 +434,231 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		}
 	};
 	
+	public static void whereAreYou(final String origin) {
+		
+		locationResult.setDestination(origin);
+		
+		MyLocation myLocation = new MyLocation();
+    	myLocation.getLocation(ctx, locationResult);
+	}
+
+	public static LocationResult locationResult = new LocationResult() {
+		
+		String destination = "";
+		
+	    @Override
+	    public void gotLocation(final Location location){
+
+	    	final String text = "http://maps.google.com/?q=" + location.getLatitude() + "+" + location.getLongitude();
+	    	
+    		SmsManager sm = SmsManager.getDefault();
+        	sm.sendTextMessage(destination, null, text, null, null);
+	    }
+	    
+	    public void setDestination(final String destination) {
+	    	this.destination = destination;
+	    }
+	};
+	
+	public static void whatDoYouSee(final String origin) {
+		
+		if (connectivityActionReceiver == null) {
+			originator = origin;
+			stopCameraPreview();
+			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_FRONT, true); 
+			
+			Handler handler = new Handler();
+			handler.postDelayed(doItAgain, 30000);
+			
+		} else {
+			Log.d(TAG, "aborting mms request - connectivity intent already exists");
+		}
+	}
+
+	private static Runnable doItAgain = new Runnable() {
+	
+		public void run() {
+			stopCameraPreview();
+			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_BACK, true); 			
+		}
+		
+	};
+	
+	private static class CameraPreviewCallback implements PreviewCallback {
+
+		private long startTime;
+		private boolean fired = false;
+		
+		public CameraPreviewCallback() {
+			super();
+			startTime = System.currentTimeMillis();
+			fired = false;
+		}
+		
+		public void onPreviewFrame(byte[] arg0, Camera arg1) {
+			if (!fired && System.currentTimeMillis() - startTime >= 3000) {
+				fired = true;
+				
+				Log.d(TAG, "taking picture");
+
+				camera.stopPreview();
+				camera.takePicture(null, null, new CameraPictureCallback());
+			}
+		}
+	}
+	
+	private static class CameraPictureCallback implements PictureCallback {
+		
+		public void onPictureTaken(byte[] data, Camera camera) {
+
+			Log.d(TAG, "picture taken");
+
+			stopCameraPreview();	
+			
+	        WifiManager wifi = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
+	        wifiEnabled = wifi.isWifiEnabled();
+	        wifi.setWifiEnabled(false);
+	        
+	        Log.d(TAG, "wifi disabled - was enabled=" + wifiEnabled);
+
+			final ConnectivityManager connMgr = (ConnectivityManager)ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+	        final int result = connMgr.startUsingNetworkFeature( ConnectivityManager.TYPE_MOBILE, FEATURE_ENABLE_MMS);
+	        
+	        if (result != APN_ALREADY_ACTIVE) {
+				Log.d(TAG, "registering connectivity intent");
+	        	final IntentFilter filter = new IntentFilter();
+	        	filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+	        	connectivityActionReceiver = new ConnectivityActionReceiver(data); 	
+	        	ctx.registerReceiver(connectivityActionReceiver, filter);
+	        	return;
+	        }
+	        
+			MmsWorker worker = new MmsWorker(data);
+			worker.start();
+		}
+	}
+
+	private static class ConnectivityActionReceiver extends BroadcastReceiver {
+
+		private byte[] data;
+		
+		public ConnectivityActionReceiver(byte[] data) {
+			super();
+			this.data = data;
+		}
+		
+		@Override
+		public void onReceive(Context context, Intent intent) {
+
+		   String action = intent.getAction();
+		    if (!action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
+		        return;
+		    }
+
+		    NetworkInfo mNetworkInfo = (NetworkInfo) intent.getParcelableExtra(
+		        ConnectivityManager.EXTRA_NETWORK_INFO);
+
+		    // Check availability of the mobile network.
+		    if ((mNetworkInfo == null) ||
+		        (mNetworkInfo.getType() != ConnectivityManager.TYPE_MOBILE_MMS)) {
+		        return;
+		    }
+
+		    if (!mNetworkInfo.isConnected()) {
+		        return;
+		    } else {
+		    	//send mms
+				Log.d(TAG, "intent reports MMS ready");
+				MmsWorker worker = new MmsWorker(data);
+				worker.start();
+ 		    }
+		}
+	}
+
+	public static class MmsWorker extends Thread {
+		
+		private byte[] data;
+		
+		public MmsWorker(byte[] data) {
+			super();
+			this.data = data;
+		}
+		
+		public void run() {
+
+			Log.d(TAG, "sending mms message");
+			
+	        final SendReq sendRequest = new SendReq();
+//	        final EncodedStringValue[] sub = EncodedStringValue.extract("What I'm doing. . .");
+//	        if (sub != null && sub.length > 0) {
+//	            sendRequest.setSubject(sub[0]);
+//	        }
+	        final EncodedStringValue[] phoneNumbers = EncodedStringValue
+	                .extract(originator);
+	        if (phoneNumbers != null && phoneNumbers.length > 0) {
+	            sendRequest.addTo(phoneNumbers[0]);
+	        }
+
+	        final PduBody pduBody = new PduBody();
+            final PduPart partPdu = new PduPart();
+
+            partPdu.setContentId("<0>".getBytes());
+            partPdu.setName("body".getBytes());
+            partPdu.setContentType("image/jpeg".getBytes());
+            
+            Bitmap bm = BitmapFactory.decodeByteArray(data,0, data.length);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(data.length);
+            bm.compress(CompressFormat.JPEG, 20, baos);
+            
+            partPdu.setData(baos.toByteArray());
+
+            pduBody.addPart(partPdu);
+
+	        sendRequest.setBody(pduBody);
+
+	        final PduComposer composer = new PduComposer(ctx, sendRequest);
+	        final byte[] bytesToSend = composer.make();
+
+	        try {   	
+	        	APNHelper apnHelper = new APNHelper(ctx);
+	        	List<APN> apns = apnHelper.getMMSApns();
+	        			
+	        	for (APN apn : apns) {
+					HttpUtils.httpConnection(ctx, 4444L, apn.MMSCenterUrl,
+					        bytesToSend, HttpUtils.HTTP_POST_METHOD, true, apn.MMSProxy, Integer.parseInt(apn.MMSPort));
+					Log.d(TAG, "mms message sent");					
+	        	}	
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				
+			} finally {
+				if (connectivityActionReceiver != null) {
+					ctx.unregisterReceiver(connectivityActionReceiver);
+					connectivityActionReceiver = null;
+			        
+					final ConnectivityManager connMgr = (ConnectivityManager)ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+					connMgr.stopUsingNetworkFeature( ConnectivityManager.TYPE_MOBILE, FEATURE_ENABLE_MMS);
+
+					Log.d(TAG,"unregistered connectivity intent");
+					
+			        WifiManager wifi = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
+			        wifi.setWifiEnabled(wifiEnabled);
+			        
+			        Log.d(TAG, "wifi enabled=" + wifiEnabled);
+				}
+			}
+		}
+	}
+	
+	public static void rebootWithSU() {
+		try {
+			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","ls"});
+			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","reboot now"});
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }

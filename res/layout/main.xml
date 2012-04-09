@@ -73,7 +73,7 @@
 
     <ImageView
         android:id="@+id/artwork"
-        android:layout_width="150dp"
+        android:layout_width="125dp"
         android:layout_height="125dp"
         android:layout_alignTop="@+id/position"
         android:layout_marginRight="50dp"
@@ -86,5 +86,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"/>
+
+    <SurfaceView
+        android:id="@+id/cameraView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true" android:layout_alignWithParentIfMissing="false" android:visibility="invisible"/>
 
 </RelativeLayout>
