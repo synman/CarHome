@@ -19,8 +19,6 @@ package com.shellware.CarHome;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.util.List;
 
 import android.app.Activity;
@@ -32,6 +30,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
@@ -42,6 +41,7 @@ import android.location.Location;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Bundle;
@@ -53,14 +53,25 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.Gallery;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Toast;
 
 import com.google.android.mms.APNHelper;
 import com.google.android.mms.APNHelper.APN;
@@ -107,10 +118,14 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     
     private SeekBar mPositionBar;
     private ImageView mArtworkImage;
+    private ImageView mBackground;
+    private Gallery gallery;
 
     private boolean mMuted = false;
     private static String originator = "";
     private static boolean wifiEnabled = false;
+    
+    private long lastTime = System.currentTimeMillis();
     
 	private Menu myMenu = null;
 
@@ -138,6 +153,58 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
     	registerReceiver(mMediaButtonReceiver, mediaFilter);
 
+    	mBackground = (ImageView) findViewById(R.id.background);
+    	mBackground.setOnTouchListener(new OnTouchListener() {
+    		
+    		public boolean onTouch(View view, MotionEvent motionevent) {
+
+    			if (motionevent.getAction() == MotionEvent.ACTION_DOWN) {
+    				if (gallery.getVisibility() != View.VISIBLE) { 
+    			        gallery.setSelection(2, false);
+	    				gallery.setVisibility(View.VISIBLE);
+
+	    				gallery.setOnItemClickListener(clicker);
+
+	    				gallery.clearAnimation();
+//	    				gallery.setAlpha(1f);
+	
+	    				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
+	    				alpha.setFillAfter(true);
+	    				alpha.setDuration(1000);
+	
+	    				gallery.setAnimation(alpha);
+	    				lastTime = System.currentTimeMillis();
+    				} else {
+    					gallery.setOnItemClickListener(null);
+    					
+    	                gallery.clearAnimation();
+    	                gallery.setAlpha(1f);
+
+    					AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
+    					alpha.setDuration(1000);
+    					alpha.setFillAfter(true);
+
+    					alpha.setAnimationListener(new AnimationListener() {
+    						public void onAnimationEnd(Animation animation) {
+    							gallery.setVisibility(View.INVISIBLE);
+    							Log.d(TAG, "gone");
+    						}
+    						public void onAnimationRepeat(Animation animation) {
+    						}
+
+    						public void onAnimationStart(Animation animation) {
+    						}
+    					});
+    					
+    					gallery.setAnimation(alpha);
+    					lastTime = System.currentTimeMillis();
+    				}
+    			}
+
+    			return true;
+    		}
+    	});
+
         mPlayButton = (Button) findViewById(R.id.playbutton);
         mPlayButton.setOnClickListener(this);
         
@@ -157,14 +224,11 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         mPositionBar.setMax(1);
         mPositionBar.setProgress(0);
         mPositionBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-
 			public void onProgressChanged(SeekBar arg0, int position, boolean fromTouch) {
 				if (fromTouch) MusicService.setPosition(position);	
 			}
-
 			public void onStartTrackingTouch(SeekBar arg0) {	
 			}
-
 			public void onStopTrackingTouch(SeekBar arg0) {		
 			}   	
         });
@@ -176,11 +240,77 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         this.registerReceiver(this.myBatteryReceiver,
                 new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         
+        
+        gallery = (Gallery) findViewById(R.id.gallery);
+        gallery.setAdapter(new ImageAdapter(this));
+
+        gallery.setSelection(2, false);
+		        
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
 //            cl.getLogDialog().show();
 //        }
 	}
+	
+	private OnItemClickListener clicker = new OnItemClickListener() {
+	
+		public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+		
+        	if (gallery.getVisibility() != View.VISIBLE) return;
+        	
+            //Toast.makeText(ctx, "" + position, Toast.LENGTH_SHORT).show();
+
+            gallery.clearAnimation();
+//            gallery.setAlpha(1f);
+
+			AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
+			alpha.setDuration(0);
+			alpha.setFillAfter(true);
+
+			alpha.setAnimationListener(new AnimationListener() {
+				public void onAnimationEnd(Animation animation) {
+					gallery.setVisibility(View.INVISIBLE);
+					gallery.setOnClickListener(null);
+					Log.d(TAG,"gone");
+				}
+				public void onAnimationRepeat(Animation animation) {
+				}
+
+				public void onAnimationStart(Animation animation) {
+				}
+			});		
+        	
+			lastTime = 0;
+			
+        	switch (position) {
+        		case 0:                    
+            		if (camera == null) {
+            			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_FRONT, false);
+            		} else {
+            			stopCameraPreview();
+            		}
+            		break;
+        		case 1:
+        		    Intent email = getPackageManager().getLaunchIntentForPackage("com.android.email");
+        		    startActivity(email);
+        		    break;
+        		case 2:
+        			String url = "google.navigation:fd=true";
+        			Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));            
+        			startActivity(i);
+        			break;
+        		case 3:
+        			Intent intent = new Intent(Intent.ACTION_MAIN);
+        			intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        			intent.setClassName("com.android.mms", "com.android.mms.ui.ConversationList");
+        			startActivity(intent);
+        			break;
+    			default:
+        			break;	
+        	}
+			
+		} 	
+	};
 	
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -195,7 +325,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     @Override
     public void onResume() {
         super.onResume();
-      
         handler.post(oneSecondHandler);
     }
     
@@ -218,6 +347,32 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				mPlayButton.setBackgroundResource(R.drawable.playicon);
 			}
 			
+			if (System.currentTimeMillis() - lastTime > 10000 && gallery.getVisibility() == View.VISIBLE) {
+				gallery.setOnItemClickListener(null);
+				
+                gallery.clearAnimation();
+                gallery.setAlpha(1f);
+
+				AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
+				alpha.setDuration(1000);
+				alpha.setFillAfter(true);
+
+				alpha.setAnimationListener(new AnimationListener() {
+					public void onAnimationEnd(Animation animation) {
+						gallery.setVisibility(View.INVISIBLE);
+						Log.d(TAG, "gone");
+					}
+					public void onAnimationRepeat(Animation animation) {
+					}
+
+					public void onAnimationStart(Animation animation) {
+					}
+				});
+				
+				gallery.setAnimation(alpha);
+				lastTime = System.currentTimeMillis();	
+			}
+			
 			handler.postDelayed(this, 1000);
 		} 	
     };
@@ -236,6 +391,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         manager.disableCarMode(UiModeManager.DISABLE_CAR_MODE_GO_HOME);
 
         unregisterReceiver(mMediaButtonReceiver);
+        unregisterReceiver(myBatteryReceiver);
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -660,5 +816,51 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public class ImageAdapter extends BaseAdapter {
+	    int mGalleryItemBackground;
+	    private Context mContext;
+
+	    private Integer[] mImageIds = {
+	            R.drawable.camera,
+	            R.drawable.email,
+	            R.drawable.navigate,
+	            R.drawable.sms,
+//	            R.drawable.rx8logo,
+//	            R.drawable.bluetooth_off,
+	            R.drawable.configuration
+	    };
+
+	    public ImageAdapter(Context c) {
+	        mContext = c;
+	        TypedArray attr = mContext.obtainStyledAttributes(R.styleable.HelloGallery);
+	        mGalleryItemBackground = attr.getResourceId(
+	                R.styleable.HelloGallery_android_galleryItemBackground, 0);
+	        attr.recycle();
+	    }
+
+	    public int getCount() {
+	        return mImageIds.length;
+	    }
+
+	    public Object getItem(int position) {
+	        return position;
+	    }
+
+	    public long getItemId(int position) {
+	        return position;
+	    }
+
+	    public View getView(int position, View convertView, ViewGroup parent) {
+	        ImageView imageView = new ImageView(mContext);
+
+	        imageView.setImageResource(mImageIds[position]);
+	        imageView.setLayoutParams(new Gallery.LayoutParams(150, 100));
+	        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+	        imageView.setBackgroundResource(mGalleryItemBackground);
+
+	        return imageView;
+	    }
 	}
 }

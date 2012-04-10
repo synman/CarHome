@@ -5,7 +5,7 @@
     android:orientation="vertical">
 
     <ImageView
-        android:id="@+id/imageView1"
+        android:id="@+id/background"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_alignParentLeft="true"
@@ -83,9 +83,9 @@
 
     <Gallery
         android:id="@+id/gallery"
-        android:layout_width="wrap_content"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"/>
+        android:fadingEdge="horizontal" android:fadingEdgeLength="400dp" android:focusable="true" android:focusableInTouchMode="false" android:duplicateParentState="false" android:layout_alignParentTop="true" android:layout_marginTop="10dp" android:fitsSystemWindows="true" android:visibility="invisible" android:filterTouchesWhenObscured="true"/>
 
     <SurfaceView
         android:id="@+id/cameraView"
