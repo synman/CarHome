@@ -509,7 +509,7 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
     }
 
     public void onGainedAudioFocus() {
-        Toast.makeText(getApplicationContext(), "gained audio focus.", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(getApplicationContext(), "gained audio focus.", Toast.LENGTH_SHORT).show();
         mAudioFocus = AudioFocus.Focused;
 
         // restart media player with new focus settings
@@ -518,8 +518,8 @@ public class MusicService extends Service implements OnCompletionListener, OnPre
     }
 
     public void onLostAudioFocus(boolean canDuck) {
-        Toast.makeText(getApplicationContext(), "lost audio focus." + (canDuck ? "can duck" :
-            "no duck"), Toast.LENGTH_SHORT).show();
+//        Toast.makeText(getApplicationContext(), "lost audio focus." + (canDuck ? "can duck" :
+//            "no duck"), Toast.LENGTH_SHORT).show();
         mAudioFocus = canDuck ? AudioFocus.NoFocusCanDuck : AudioFocus.NoFocusNoDuck;
 
         // start/restart/pause media player with new focus settings

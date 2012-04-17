@@ -35,6 +35,7 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.PreviewCallback;
 import android.location.Location;
@@ -59,10 +60,10 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
+import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.BaseAdapter;
@@ -71,7 +72,7 @@ import android.widget.Gallery;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.google.android.mms.APNHelper;
 import com.google.android.mms.APNHelper.APN;
@@ -90,9 +91,9 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private static final String FEATURE_ENABLE_MMS = "enableMMS";
     
     private static final int APN_ALREADY_ACTIVE     = 0;
-    private static final int APN_REQUEST_STARTED    = 1;
-    private static final int APN_TYPE_NOT_AVAILABLE = 2;
-    private static final int APN_REQUEST_FAILED     = 3;
+//    private static final int APN_REQUEST_STARTED    = 1;
+//    private static final int APN_TYPE_NOT_AVAILABLE = 2;
+//    private static final int APN_REQUEST_FAILED     = 3;
 	
 	private static Context ctx = null;
 	private SharedPreferences prefs;
@@ -105,10 +106,15 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	
 	RemoteControlReceiver mMediaButtonReceiver;
 	IntentFilter mediaFilter;
-
-
+	
+	private OBDHelper obd;
+	
 	private static SurfaceView mCameraView;
 	private static SurfaceHolder mCameraHolder = null;
+	
+	GaugeNeedle waterNeedle;
+	GaugeNeedle voltageNeedle;
+	GaugeNeedle afrNeedle;
 	
     private Button mPlayButton;
     private Button mStopButton;
@@ -124,11 +130,15 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private boolean mMuted = false;
     private static String originator = "";
     private static boolean wifiEnabled = false;
+    private static int activeCamera = 0;
     
     private long lastTime = System.currentTimeMillis();
     
 	private Menu myMenu = null;
 
+	ImageView needle;
+	final float offset = .7333f;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -205,6 +215,29 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     		}
     	});
 
+        waterNeedle = (GaugeNeedle) findViewById(R.id.waterneedle);
+        voltageNeedle = (GaugeNeedle) findViewById(R.id.voltageneedle);
+        afrNeedle = (GaugeNeedle) findViewById(R.id.afrneedle);
+
+        waterNeedle.setPivotPoint(.65f);
+        waterNeedle.setMinValue(100);
+        waterNeedle.setMaxValue(250);
+        waterNeedle.setMinDegrees(-37);
+        waterNeedle.setMaxDegrees(46);
+        
+        voltageNeedle.setPivotPoint(.65f);
+        voltageNeedle.setMinValue(100);
+        voltageNeedle.setMaxValue(160);
+        voltageNeedle.setMinDegrees(-55);
+        voltageNeedle.setMaxDegrees(50);
+        
+        afrNeedle.setPivotPoint(.52f);
+        afrNeedle.setMinValue(111);
+        afrNeedle.setMaxValue(200);
+        afrNeedle.setMinDegrees(-180);
+        afrNeedle.setMaxDegrees(90);
+        afrNeedle.setOffsetCenterInDegrees(-45);
+        
         mPlayButton = (Button) findViewById(R.id.playbutton);
         mPlayButton.setOnClickListener(this);
         
@@ -236,16 +269,14 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         mArtworkImage = (ImageView) findViewById(R.id.artwork);
         
         mCameraView = (SurfaceView) findViewById(R.id.cameraView);
-        
-        this.registerReceiver(this.myBatteryReceiver,
-                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        
-        
+                
         gallery = (Gallery) findViewById(R.id.gallery);
         gallery.setAdapter(new ImageAdapter(this));
 
         gallery.setSelection(2, false);
-		        
+        
+        needle = (ImageView) findViewById(R.id.waterneedle);
+        
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
 //            cl.getLogDialog().show();
@@ -256,7 +287,23 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	
 		public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
 		
-        	if (gallery.getVisibility() != View.VISIBLE) return;
+        	if (gallery.getVisibility() != View.VISIBLE) {
+		        gallery.setSelection(2, false);
+				gallery.setVisibility(View.VISIBLE);
+
+				gallery.setOnItemClickListener(clicker);
+
+				gallery.clearAnimation();
+//				gallery.setAlpha(1f);
+
+				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
+				alpha.setFillAfter(true);
+				alpha.setDuration(1000);
+
+				gallery.setAnimation(alpha);
+				lastTime = System.currentTimeMillis();
+				return;
+        	}
         	
             //Toast.makeText(ctx, "" + position, Toast.LENGTH_SHORT).show();
 
@@ -325,8 +372,17 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     @Override
     public void onResume() {
         super.onResume();
+        
+        // our obd helper class (lotsa stuff happens here)
+	try {
+	    if (obd == null) obd = new OBDHelper(this);
+	} catch (Exception ex) {
+		// do nothing
+	}
         handler.post(oneSecondHandler);
     }
+    
+    double lastWater = 32;
     
     private Runnable oneSecondHandler = new Runnable() {
 
@@ -373,6 +429,21 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				lastTime = System.currentTimeMillis();	
 			}
 			
+			try {				
+				((TextView) findViewById(R.id.textView1)).setText(String.format("Voltage: %.1fv", obd.getVoltage()));
+				((TextView) findViewById(R.id.textView2)).setText(String.format("IAT: %.0f\u00b0", obd.getIat()));
+				((TextView) findViewById(R.id.textView3)).setText(String.format("Coolant: %.0f\u00b0", obd.getCoolant()));
+				((TextView) findViewById(R.id.textView4)).setText(String.format("AFR: %.2f", obd.getWideband()));
+				((TextView) findViewById(R.id.textView5)).setText(String.format("MAF: %.2fg/s", obd.getMaf()));
+				
+				waterNeedle.setValue(obd.getCoolant());
+				voltageNeedle.setValue(obd.getVoltage() * 100);
+				afrNeedle.setValue(200 - (obd.getWideband() * 100));
+				
+			} catch (Exception ex) {
+				// do nothing -- null pointer likely from obd
+			}
+			
 			handler.postDelayed(this, 1000);
 		} 	
     };
@@ -380,6 +451,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     @Override
     public void onPause() {
     	super.onPause();
+    	
+    	if (obd != null) {
+        	obd.shutdown();
+        	obd = null;    		
+    	}
+    	
     	handler.removeCallbacks(oneSecondHandler);
     }
 
@@ -411,6 +488,10 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	    	myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
 	    }
 
+	    this.registerReceiver(this.myBatteryReceiver,
+                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        
+
 	    return super.onPrepareOptionsMenu(menu);
 	}
 
@@ -427,16 +508,31 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         	case R.id.BTMenuItem:
         	    BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();    
         	    if (bt != null && !bt.isEnabled()) {
-        	    	try {
+           	    	try {
 						Thread.sleep(5000);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
+           	    	
         	    	bt.enable();
+
+        	    	if (obd != null) {
+        	    		obd.shutdown();
+        	    		obd = null;        	    		 
+        	    	}
+
+        	    	obd = new OBDHelper(this);
+        	    	
         	    	item.setIcon(R.drawable.bluetooth_on);
         	    } else { 
+        	        if (obd != null) {
+        	        	obd.shutdown();
+        	        	obd = null;
+        	        }
+        	        
         	        if (bt != null) bt.disable(); 
+
         	        item.setIcon(R.drawable.bluetooth_off);
         	    } 
         		return true;
@@ -467,6 +563,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		
         try {
 			if (!withCallback) mCameraView.setVisibility(View.VISIBLE);
+			
+			activeCamera = whichCamera;
 			
 			if (mCameraHolder == null) {
 				mCameraHolder = mCameraView.getHolder();
@@ -578,12 +676,34 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 					
 	        	    if (bt != null && !bt.isEnabled()) {
 	        	    	bt.enable();
-//	        	    	myMenu.getItem(0).setIcon(R.drawable.bluetooth_on);
+	        	        
+	        	        // our obd helper class (lotsa stuff happens here)
+	        	        if (obd != null) {
+	        	        	obd.shutdown();
+	        	        	obd = null;
+	        	        }
+        	        	obd = new OBDHelper(ctx);
+
+        	        	new Handler().post(new Runnable() {
+							public void run() {
+								myMenu.getItem(0).setIcon(R.drawable.bluetooth_on);
+							}
+        	        	});
 	        	    } 
 				} else {
 	        	    if (bt != null && bt.isEnabled()) {
+	        	    	if (obd != null) {
+	        	    		obd.shutdown();
+	        	    		obd = null;
+	        	    	}
+
 	        	    	bt.disable();
-//	        	    	myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
+	        	    	
+        	        	new Handler().post(new Runnable() {
+							public void run() {
+								myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
+							}
+        	        	});
 	        	    } 					
 				}
 			}
@@ -664,7 +784,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	}
 	
 	private static class CameraPictureCallback implements PictureCallback {
-		
+
 		public void onPictureTaken(byte[] data, Camera camera) {
 
 			Log.d(TAG, "picture taken");
@@ -684,12 +804,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				Log.d(TAG, "registering connectivity intent");
 	        	final IntentFilter filter = new IntentFilter();
 	        	filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-	        	connectivityActionReceiver = new ConnectivityActionReceiver(data); 	
+	        	connectivityActionReceiver = new ConnectivityActionReceiver(data, activeCamera == CameraInfo.CAMERA_FACING_FRONT ? 50 : 10); 	
 	        	ctx.registerReceiver(connectivityActionReceiver, filter);
 	        	return;
 	        }
 	        
-			MmsWorker worker = new MmsWorker(data);
+	        SendMmsPicture worker = new SendMmsPicture(data,  activeCamera == CameraInfo.CAMERA_FACING_FRONT ? 50 : 10);
 			worker.start();
 		}
 	}
@@ -697,10 +817,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	private static class ConnectivityActionReceiver extends BroadcastReceiver {
 
 		private byte[] data;
+		private int quality;
 		
-		public ConnectivityActionReceiver(byte[] data) {
+		public ConnectivityActionReceiver(byte[] data, int quality) {
 			super();
 			this.data = data;
+			this.quality = quality;
 		}
 		
 		@Override
@@ -725,19 +847,21 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		    } else {
 		    	//send mms
 				Log.d(TAG, "intent reports MMS ready");
-				MmsWorker worker = new MmsWorker(data);
+				SendMmsPicture worker = new SendMmsPicture(data, quality);
 				worker.start();
  		    }
 		}
 	}
 
-	public static class MmsWorker extends Thread {
+	public static class SendMmsPicture extends Thread {
 		
 		private byte[] data;
+		private int quality;
 		
-		public MmsWorker(byte[] data) {
+		public SendMmsPicture(byte[] data, int quality) {
 			super();
 			this.data = data;
+			this.quality = quality;
 		}
 		
 		public void run() {
@@ -764,7 +888,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
             
             Bitmap bm = BitmapFactory.decodeByteArray(data,0, data.length);
             ByteArrayOutputStream baos = new ByteArrayOutputStream(data.length);
-            bm.compress(CompressFormat.JPEG, 20, baos);
+            bm.compress(CompressFormat.JPEG, quality, baos);
             
             partPdu.setData(baos.toByteArray());
 

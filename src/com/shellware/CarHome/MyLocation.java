@@ -25,7 +25,7 @@ public class MyLocation {
 
         //exceptions will be thrown if provider is not permitted.
         try{gps_enabled=lm.isProviderEnabled(LocationManager.GPS_PROVIDER);}catch(Exception ex){}
-        try{network_enabled=lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}catch(Exception ex){}
+//        try{network_enabled=lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);}catch(Exception ex){}
 
         //don't start listeners if no provider is enabled
         if(!gps_enabled && !network_enabled)
@@ -36,7 +36,7 @@ public class MyLocation {
         if(network_enabled)
             lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListenerNetwork);
         timer1=new Timer();
-        timer1.schedule(new GetLastLocation(), 20000);
+        timer1.schedule(new GetLastLocation(), 30000);
         return true;
     }
 

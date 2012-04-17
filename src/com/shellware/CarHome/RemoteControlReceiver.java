@@ -30,23 +30,23 @@ public class RemoteControlReceiver extends BroadcastReceiver {
 	            //        context.startService(new Intent(MusicService.ACTION_TOGGLE_PLAYBACK));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_PLAY:
-	                    Toast.makeText(context, "Play Pressed", Toast.LENGTH_SHORT).show();
+//	                    Toast.makeText(context, "Play Pressed", Toast.LENGTH_SHORT).show();
 	                    context.startService(new Intent(MusicService.ACTION_PLAY));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_PAUSE:
-	                    Toast.makeText(context, "Pause Pressed", Toast.LENGTH_SHORT).show();
+//	                    Toast.makeText(context, "Pause Pressed", Toast.LENGTH_SHORT).show();
 	                    context.startService(new Intent(MusicService.ACTION_PAUSE));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_STOP:
-	                    Toast.makeText(context, "Stop Pressed", Toast.LENGTH_SHORT).show();
+//	                    Toast.makeText(context, "Stop Pressed", Toast.LENGTH_SHORT).show();
 	                    context.startService(new Intent(MusicService.ACTION_STOP));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_NEXT:
-	                    Toast.makeText(context, "Next Track Pressed", Toast.LENGTH_SHORT).show();
+//	                    Toast.makeText(context, "Next Track Pressed", Toast.LENGTH_SHORT).show();
 	                    context.startService(new Intent(MusicService.ACTION_SKIP));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-	                    Toast.makeText(context, "Previous Track Pressed", Toast.LENGTH_SHORT).show();
+//	                    Toast.makeText(context, "Previous Track Pressed", Toast.LENGTH_SHORT).show();
 	                    // TODO: ensure that doing this in rapid succession actually plays the
 	                    // previous song
 	                    context.startService(new Intent(MusicService.ACTION_REWIND));
