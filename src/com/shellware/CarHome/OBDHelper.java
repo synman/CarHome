@@ -36,6 +36,7 @@ public class OBDHelper {
 	private float coolant = 0f;
 	private float maf = 0f;
 	private float wideband = 0f;
+	private float egt = 0f;
 	
 	public OBDHelper(Context ctx) {
 	    
@@ -213,6 +214,7 @@ public class OBDHelper {
 			if (DPN.equals("MAF_FLOW_RATE")) maf = getPrimaryDPNValue(sDecodedData);
 			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData);
 			if (DPN.equals("WIDEBAND_O2")) wideband = getPrimaryDPNValue(sDecodedData);
+//			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData);
 		}
 	};
 
@@ -257,7 +259,7 @@ public class OBDHelper {
 					if (newState >= OBD2Session.STATE_OBDCONNECTED) {
 						// Add some datapoints to the "routine scan" which is an
 						// automatic loop that continuously scans those PIDs.
-						hs.setRoutineScanDelay(2000);
+						hs.setRoutineScanDelay(500);
 
 						hs.getRoutineScan().addDPN("VOLTS");
 						hs.getRoutineScan().addDPN("TEMP_INTAKE");
@@ -265,6 +267,7 @@ public class OBDHelper {
 						hs.getRoutineScan().addDPN("MAF_FLOW_RATE");
 						hs.getRoutineScan().addDPN("FUEL_LEVEL");
 						hs.getRoutineScan().addDPN("WIDEBAND_O2");
+//						hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
 						
 					} else {
 						hs.getRoutineScan().removeAllDPNs();
@@ -299,7 +302,7 @@ public class OBDHelper {
 		if (hs.getRoutineScan() == null) return;
 	
 		// add one or more datapoints to the routine scan class so that it actively scans that PID to generate DPN arrived events. 
-		hs.setRoutineScanDelay(2000);
+		hs.setRoutineScanDelay(500);
 
 		hs.getRoutineScan().addDPN("VOLTS");
 		hs.getRoutineScan().addDPN("TEMP_INTAKE");
@@ -307,6 +310,7 @@ public class OBDHelper {
 		hs.getRoutineScan().addDPN("MAF_FLOW_RATE");
 		hs.getRoutineScan().addDPN("FUEL_LEVEL");
 		hs.getRoutineScan().addDPN("WIDEBAND_O2");
+//		hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
 	}
 
 	/**
@@ -361,4 +365,10 @@ public class OBDHelper {
 	public float getWideband() {
 		return wideband;
 	}
+
+	public float getEgt() {
+		return egt;
+	}
+	
+	
 }

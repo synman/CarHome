@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package com.shellware.CarHome;
+package com.shellware.CarHome.media;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.shellware.CarHome.MusicRetriever.Item;
+import com.shellware.CarHome.CarHomeActivity;
+import com.shellware.CarHome.R;
+import com.shellware.CarHome.R.drawable;
+import com.shellware.CarHome.R.string;
+import com.shellware.CarHome.media.MusicRetriever.Item;
 
 import android.app.Notification;
 import android.app.NotificationManager;

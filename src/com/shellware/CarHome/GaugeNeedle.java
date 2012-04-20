@@ -2,7 +2,6 @@ package com.shellware.CarHome;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
@@ -10,13 +9,15 @@ import android.widget.ImageView;
 
 public class GaugeNeedle extends ImageView {
 
+	private final int NOT_SET_YET = Integer.MAX_VALUE;
+	
+	private int offsetCenterInDegrees = NOT_SET_YET;
 	private float lastValue; 
 	
-	private int minValue = 180;
+	private int minValue = 0;
 	private int maxValue = 360;
-	private int minDegrees = 0;
-	private int maxDegrees = 360;
-	private int offsetCenterInDegrees = 0;
+	private int minDegrees = -180;
+	private int maxDegrees = 180;
 	private float pivotPoint = .5f;
 
 	public GaugeNeedle(Context context) {
@@ -31,28 +32,32 @@ public class GaugeNeedle extends ImageView {
 
 	public void setValue(final float value) {
 		
+		// calculate our center point if it has not yet been calculated
+		if (offsetCenterInDegrees == NOT_SET_YET) {
+			offsetCenterInDegrees = maxDegrees - (maxDegrees - minDegrees) / 2 ;
+		}
+		
 		final float scale = (float) (maxDegrees - minDegrees) / (maxValue - minValue) ;
 		final float newValue = (value - minValue) * scale - ((maxDegrees - minDegrees) / 2) + offsetCenterInDegrees;
 		
-		// filter out values that will distort our gauge display
-		if (newValue + 45 > maxDegrees) return;
-		if (newValue - 45 < minDegrees) return;
-		
+		// bail if our values are significantly beyond our borders (20+ degrees)
+		if (newValue > maxDegrees + 20) return;
+		if (newValue < minDegrees - 20) return;
+
 		RotateAnimation rotateAnimation = new RotateAnimation(lastValue, newValue, 
-				  Animation.RELATIVE_TO_SELF, 0.5f, 
-				  Animation.RELATIVE_TO_SELF, pivotPoint);
+			  Animation.RELATIVE_TO_SELF, 0.5f, 
+			  Animation.RELATIVE_TO_SELF, pivotPoint);
 
 		rotateAnimation.setInterpolator(new LinearInterpolator());
-		rotateAnimation.setDuration(500);
+		rotateAnimation.setDuration(250);
 		rotateAnimation.setFillAfter(true);	
 	
 		startAnimation(rotateAnimation);
 		
 		lastValue = newValue;
-		Log.d("Tester", String.valueOf(value) + " - " + String.valueOf(newValue) + " - " + String.valueOf(scale));
+		//Log.d("Tester", String.valueOf(value) + " - " + String.valueOf(newValue) + " - " + String.valueOf(scale));
 	}
 	
-
 
 	public int getMinValue() {
 		return minValue;
@@ -83,12 +88,6 @@ public class GaugeNeedle extends ImageView {
 	}
 	public void setPivotPoint(float pivotPoint) {
 		this.pivotPoint = pivotPoint;
-	}
-	public int getOffsetCenterInDegrees() {
-		return offsetCenterInDegrees;
-	}
-	public void setOffsetCenterInDegrees(int offsetCenterInDegrees) {
-		this.offsetCenterInDegrees = offsetCenterInDegrees;
 	}
 
 }

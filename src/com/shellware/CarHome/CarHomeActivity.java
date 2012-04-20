@@ -19,13 +19,18 @@ package com.shellware.CarHome;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.UiModeManager;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -44,7 +49,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
-import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
@@ -72,7 +76,6 @@ import android.widget.Gallery;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
-import android.widget.TextView;
 
 import com.google.android.mms.APNHelper;
 import com.google.android.mms.APNHelper.APN;
@@ -82,29 +85,37 @@ import com.google.android.mms.pdu.PduComposer;
 import com.google.android.mms.pdu.PduPart;
 import com.google.android.mms.pdu.SendReq;
 import com.google.android.mms.transaction.HttpUtils;
+import com.gtosoft.libvoyager.session.OBD2Session;
 import com.shellware.CarHome.MyLocation.LocationResult;
+import com.shellware.CarHome.media.MusicService;
+import com.shellware.CarHome.media.RemoteControlReceiver;
 
 public class CarHomeActivity extends Activity implements OnClickListener {
 
 	private final static String TAG = "CarHomeActivity";
-	
     private static final String FEATURE_ENABLE_MMS = "enableMMS";
     
     private static final int APN_ALREADY_ACTIVE     = 0;
 //    private static final int APN_REQUEST_STARTED    = 1;
 //    private static final int APN_TYPE_NOT_AVAILABLE = 2;
 //    private static final int APN_REQUEST_FAILED     = 3;
-	
+    
+    private final static int ROUTINE_UPDATE_INTERVAL = 500;
+
 	private static Context ctx = null;
 	private SharedPreferences prefs;
 	private Resources res;
-    private Handler handler;
+	
+    private Handler routineUpdateHandler = new Handler();
+    private Handler hideGalleryHandler = new Handler();
+	
 
 	private AudioManager mAudioManager;
 	private static Camera camera = null;
 	private static ConnectivityActionReceiver connectivityActionReceiver;
 	
 	RemoteControlReceiver mMediaButtonReceiver;
+	BatteryStatusReceiver mBatteryStatusReceiver;
 	IntentFilter mediaFilter;
 	
 	private OBDHelper obd;
@@ -115,6 +126,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	GaugeNeedle waterNeedle;
 	GaugeNeedle voltageNeedle;
 	GaugeNeedle afrNeedle;
+	GaugeNeedle iatNeedle;
+	GaugeNeedle mafNeedle;
 	
     private Button mPlayButton;
     private Button mStopButton;
@@ -132,13 +145,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private static boolean wifiEnabled = false;
     private static int activeCamera = 0;
     
-    private long lastTime = System.currentTimeMillis();
-    
 	private Menu myMenu = null;
 
-	ImageView needle;
-	final float offset = .7333f;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -152,8 +160,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		res = getResources();
-		
-		handler = new Handler();
 
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
         
@@ -164,79 +170,43 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     	registerReceiver(mMediaButtonReceiver, mediaFilter);
 
     	mBackground = (ImageView) findViewById(R.id.background);
-    	mBackground.setOnTouchListener(new OnTouchListener() {
-    		
-    		public boolean onTouch(View view, MotionEvent motionevent) {
-
-    			if (motionevent.getAction() == MotionEvent.ACTION_DOWN) {
-    				if (gallery.getVisibility() != View.VISIBLE) { 
-    			        gallery.setSelection(2, false);
-	    				gallery.setVisibility(View.VISIBLE);
-
-	    				gallery.setOnItemClickListener(clicker);
-
-	    				gallery.clearAnimation();
-//	    				gallery.setAlpha(1f);
-	
-	    				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
-	    				alpha.setFillAfter(true);
-	    				alpha.setDuration(1000);
-	
-	    				gallery.setAnimation(alpha);
-	    				lastTime = System.currentTimeMillis();
-    				} else {
-    					gallery.setOnItemClickListener(null);
-    					
-    	                gallery.clearAnimation();
-    	                gallery.setAlpha(1f);
-
-    					AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
-    					alpha.setDuration(1000);
-    					alpha.setFillAfter(true);
-
-    					alpha.setAnimationListener(new AnimationListener() {
-    						public void onAnimationEnd(Animation animation) {
-    							gallery.setVisibility(View.INVISIBLE);
-    							Log.d(TAG, "gone");
-    						}
-    						public void onAnimationRepeat(Animation animation) {
-    						}
-
-    						public void onAnimationStart(Animation animation) {
-    						}
-    					});
-    					
-    					gallery.setAnimation(alpha);
-    					lastTime = System.currentTimeMillis();
-    				}
-    			}
-
-    			return true;
-    		}
-    	});
+    	mBackground.setOnTouchListener(new backgroundTouchListener());
 
         waterNeedle = (GaugeNeedle) findViewById(R.id.waterneedle);
         voltageNeedle = (GaugeNeedle) findViewById(R.id.voltageneedle);
         afrNeedle = (GaugeNeedle) findViewById(R.id.afrneedle);
+        iatNeedle = (GaugeNeedle) findViewById(R.id.iatneedle);
+        mafNeedle = (GaugeNeedle) findViewById(R.id.mafneedle);
 
         waterNeedle.setPivotPoint(.65f);
         waterNeedle.setMinValue(100);
         waterNeedle.setMaxValue(250);
-        waterNeedle.setMinDegrees(-37);
-        waterNeedle.setMaxDegrees(46);
+        waterNeedle.setMinDegrees(-45);
+        waterNeedle.setMaxDegrees(45);
         
         voltageNeedle.setPivotPoint(.65f);
         voltageNeedle.setMinValue(100);
         voltageNeedle.setMaxValue(160);
-        voltageNeedle.setMinDegrees(-55);
-        voltageNeedle.setMaxDegrees(50);
+        voltageNeedle.setMinDegrees(-52);
+        voltageNeedle.setMaxDegrees(52);
         
-        afrNeedle.setPivotPoint(.52f);
-        afrNeedle.setMinValue(111);
+        mafNeedle.setPivotPoint(.5f);
+        mafNeedle.setMinValue(0);
+        mafNeedle.setMaxValue(200);
+        mafNeedle.setMinDegrees(-132);
+        mafNeedle.setMaxDegrees(132);
+        
+        afrNeedle.setPivotPoint(.5f);
+        afrNeedle.setMinValue(100);
         afrNeedle.setMaxValue(200);
         afrNeedle.setMinDegrees(-180);
         afrNeedle.setMaxDegrees(90);
-        afrNeedle.setOffsetCenterInDegrees(-45);
+        
+        iatNeedle.setPivotPoint(.5f);
+        iatNeedle.setMinValue(0);
+        iatNeedle.setMaxValue(200);
+        iatNeedle.setMinDegrees(-180);
+        iatNeedle.setMaxDegrees(90);
         
         mPlayButton = (Button) findViewById(R.id.playbutton);
         mPlayButton.setOnClickListener(this);
@@ -265,7 +235,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			public void onStopTrackingTouch(SeekBar arg0) {		
 			}   	
         });
-        
+
         mArtworkImage = (ImageView) findViewById(R.id.artwork);
         
         mCameraView = (SurfaceView) findViewById(R.id.cameraView);
@@ -274,8 +244,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         gallery.setAdapter(new ImageAdapter(this));
 
         gallery.setSelection(2, false);
-        
-        needle = (ImageView) findViewById(R.id.waterneedle);
+        gallery.bringToFront();
         
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
@@ -283,27 +252,108 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 //        }
 	}
 	
+	private class backgroundTouchListener implements OnTouchListener {
+
+		public boolean onTouch(View view, MotionEvent motionevent) {
+
+			if (motionevent.getAction() == MotionEvent.ACTION_DOWN) {
+				if (gallery.getVisibility() != View.VISIBLE) { 
+			        gallery.setSelection(2, false);
+    				gallery.setVisibility(View.VISIBLE);
+
+    				gallery.setOnItemClickListener(clicker);
+
+    				gallery.clearAnimation();
+//    				gallery.setAlpha(1f);
+
+    				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
+    				alpha.setFillAfter(true);
+    				alpha.setDuration(1000);
+
+    				gallery.setAnimation(alpha);
+
+    				hideGalleryHandler.postDelayed(hideGallery, 10000);
+				} else {
+					gallery.setOnItemClickListener(null);
+					
+	                gallery.clearAnimation();
+	                gallery.setAlpha(1f);
+
+					AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
+					alpha.setDuration(1000);
+					alpha.setFillAfter(true);
+
+					alpha.setAnimationListener(new AnimationListener() {
+						public void onAnimationEnd(Animation animation) {
+							gallery.setVisibility(View.INVISIBLE);
+							Log.d(TAG, "gone");
+						}
+						public void onAnimationRepeat(Animation animation) {
+						}
+
+						public void onAnimationStart(Animation animation) {
+						}
+					});
+					
+					gallery.setAnimation(alpha);
+				}
+			}
+
+			return true;
+		}	
+	}
+	
+	private Runnable hideGallery = new Runnable() {
+
+		public void run() {
+			
+			if (gallery.getVisibility() == View.VISIBLE) {
+				gallery.setOnItemClickListener(null);
+				
+                gallery.clearAnimation();
+                gallery.setAlpha(1f);
+
+				AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
+				alpha.setDuration(1000);
+				alpha.setFillAfter(true);
+
+				alpha.setAnimationListener(new AnimationListener() {
+					public void onAnimationEnd(Animation animation) {
+						gallery.setVisibility(View.INVISIBLE);
+//						Log.d(TAG, "gone");
+					}
+					public void onAnimationRepeat(Animation animation) {
+					}
+
+					public void onAnimationStart(Animation animation) {
+					}
+				});
+				
+				gallery.setAnimation(alpha);
+			}
+		}
+	};
+	
 	private OnItemClickListener clicker = new OnItemClickListener() {
 	
 		public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
 		
-        	if (gallery.getVisibility() != View.VISIBLE) {
-		        gallery.setSelection(2, false);
-				gallery.setVisibility(View.VISIBLE);
-
-				gallery.setOnItemClickListener(clicker);
-
-				gallery.clearAnimation();
-//				gallery.setAlpha(1f);
-
-				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
-				alpha.setFillAfter(true);
-				alpha.setDuration(1000);
-
-				gallery.setAnimation(alpha);
-				lastTime = System.currentTimeMillis();
-				return;
-        	}
+//        	if (gallery.getVisibility() != View.VISIBLE) {
+//		        gallery.setSelection(2, false);
+//				gallery.setVisibility(View.VISIBLE);
+//
+//				gallery.setOnItemClickListener(clicker);
+//
+//				gallery.clearAnimation();
+////				gallery.setAlpha(1f);
+//
+//				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
+//				alpha.setFillAfter(true);
+//				alpha.setDuration(1000);
+//
+//				gallery.setAnimation(alpha);
+//				return;
+//        	}
         	
             //Toast.makeText(ctx, "" + position, Toast.LENGTH_SHORT).show();
 
@@ -326,8 +376,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				public void onAnimationStart(Animation animation) {
 				}
 			});		
-        	
-			lastTime = 0;
 			
         	switch (position) {
         		case 0:                    
@@ -379,12 +427,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	} catch (Exception ex) {
 		// do nothing
 	}
-        handler.post(oneSecondHandler);
+        routineUpdateHandler.post(routineUpdate);
     }
     
     double lastWater = 32;
     
-    private Runnable oneSecondHandler = new Runnable() {
+    private Runnable routineUpdate = new Runnable() {
 
 		public void run() {
 
@@ -403,48 +451,28 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				mPlayButton.setBackgroundResource(R.drawable.playicon);
 			}
 			
-			if (System.currentTimeMillis() - lastTime > 10000 && gallery.getVisibility() == View.VISIBLE) {
-				gallery.setOnItemClickListener(null);
-				
-                gallery.clearAnimation();
-                gallery.setAlpha(1f);
-
-				AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
-				alpha.setDuration(1000);
-				alpha.setFillAfter(true);
-
-				alpha.setAnimationListener(new AnimationListener() {
-					public void onAnimationEnd(Animation animation) {
-						gallery.setVisibility(View.INVISIBLE);
-						Log.d(TAG, "gone");
-					}
-					public void onAnimationRepeat(Animation animation) {
-					}
-
-					public void onAnimationStart(Animation animation) {
-					}
-				});
-				
-				gallery.setAnimation(alpha);
-				lastTime = System.currentTimeMillis();	
-			}
-			
 			try {				
-				((TextView) findViewById(R.id.textView1)).setText(String.format("Voltage: %.1fv", obd.getVoltage()));
-				((TextView) findViewById(R.id.textView2)).setText(String.format("IAT: %.0f\u00b0", obd.getIat()));
-				((TextView) findViewById(R.id.textView3)).setText(String.format("Coolant: %.0f\u00b0", obd.getCoolant()));
-				((TextView) findViewById(R.id.textView4)).setText(String.format("AFR: %.2f", obd.getWideband()));
-				((TextView) findViewById(R.id.textView5)).setText(String.format("MAF: %.2fg/s", obd.getMaf()));
+//				((TextView) findViewById(R.id.textView1)).setText(String.format("Voltage: %.1fv", obd.getVoltage()));
+//				((TextView) findViewById(R.id.textView2)).setText(String.format("IAT: %.0f\u00b0", obd.getIat()));
+//				((TextView) findViewById(R.id.textView3)).setText(String.format("Coolant: %.0f\u00b0", obd.getCoolant()));
+//				((TextView) findViewById(R.id.textView4)).setText(String.format("AFR: %.2f", obd.getWideband()));
+//				((TextView) findViewById(R.id.textView5)).setText(String.format("MAF: %.2fg/s", obd.getMaf()));
+				
+//				((TextView) findViewById(R.id.textView1)).setText(String.format("Fuel Level: %.2f%", obd.getFuel()));
+//				((TextView) findViewById(R.id.textView5)).setText(String.format("EGT (Catalyst): %.2f\u00b0 F", obd.getEgt()));
 				
 				waterNeedle.setValue(obd.getCoolant());
-				voltageNeedle.setValue(obd.getVoltage() * 100);
-				afrNeedle.setValue(200 - (obd.getWideband() * 100));
+				voltageNeedle.setValue(obd.getVoltage() * 10);
+				mafNeedle.setValue(obd.getMaf());
+				afrNeedle.setValue(200 - (obd.getWideband() * 10) + 100);
+				iatNeedle.setValue(obd.getIat());
 				
 			} catch (Exception ex) {
 				// do nothing -- null pointer likely from obd
+//				Toast.makeText(getApplicationContext(), getStackTrace(ex), Toast.LENGTH_LONG);
 			}
 			
-			handler.postDelayed(this, 1000);
+			routineUpdateHandler.postDelayed(this, ROUTINE_UPDATE_INTERVAL);
 		} 	
     };
     
@@ -457,18 +485,20 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         	obd = null;    		
     	}
     	
-    	handler.removeCallbacks(oneSecondHandler);
+    	routineUpdateHandler.removeCallbacks(routineUpdate);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         
+        hideGalleryHandler.removeCallbacks(hideGallery);
+        
         UiModeManager manager = (UiModeManager)getSystemService(Context.UI_MODE_SERVICE);    
         manager.disableCarMode(UiModeManager.DISABLE_CAR_MODE_GO_HOME);
 
         unregisterReceiver(mMediaButtonReceiver);
-        unregisterReceiver(myBatteryReceiver);
+        unregisterReceiver(mBatteryStatusReceiver);
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -488,10 +518,9 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	    	myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
 	    }
 
-	    this.registerReceiver(this.myBatteryReceiver,
-                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+    	mBatteryStatusReceiver = new BatteryStatusReceiver(this, obd, menu);
+	    registerReceiver(mBatteryStatusReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         
-
 	    return super.onPrepareOptionsMenu(menu);
 	}
 
@@ -550,13 +579,30 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         		}
                 
             	return true;
-
-        	
+            	
+        	case R.id.celMenuItem:
+        		if (obd != null && obd.getHs() != null && obd.getHs().getOBDSession() != null && 
+        				obd.getHs().getOBDSession().getCurrentState() == OBD2Session.STATE_OBDCONNECTED) {
+        			String cels = obd.getHs().getPIDDecoder().getDataViaOBD("DTC");
+        			
+        		 	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        	    	builder
+	        	    	.setTitle("Stored Trouble Codes")
+	        	    	.setMessage(cels + "\n\n" + "Would you like to clear active CEL(s)?")
+	        	    	.setIcon(android.R.drawable.ic_dialog_info)
+	        	    	.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+	        	    	    public void onClick(DialogInterface dialog, int which) {			      	
+	        	    	    	//Yes button clicked, do something
+	        	    	    	obd.getHs().getOBDSession().sendDTCReset();
+	        	    	    }
+	        	    	})
+	        	    	.setNegativeButton("No", null)						//Do nothing on no
+	        	    	.show();
+        		}
+    
         	default:
                 return super.onOptionsItemSelected(item);
         }
-		
-		
     }
 	
 	private static void startCameraPreview(int whichCamera, boolean withCallback) {
@@ -661,55 +707,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         }
 	}    
 	
-	private BroadcastReceiver myBatteryReceiver = new BroadcastReceiver() {
-
-		@Override
-		public void onReceive(Context arg0, Intent arg1) {
-
-			if (arg1.getAction().equals(Intent.ACTION_BATTERY_CHANGED)){
-
-				final int status = arg1.getIntExtra("status", BatteryManager.BATTERY_STATUS_UNKNOWN);
-        	    BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();    
-				
-				if (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-						status == BatteryManager.BATTERY_STATUS_FULL) {
-					
-	        	    if (bt != null && !bt.isEnabled()) {
-	        	    	bt.enable();
-	        	        
-	        	        // our obd helper class (lotsa stuff happens here)
-	        	        if (obd != null) {
-	        	        	obd.shutdown();
-	        	        	obd = null;
-	        	        }
-        	        	obd = new OBDHelper(ctx);
-
-        	        	new Handler().post(new Runnable() {
-							public void run() {
-								myMenu.getItem(0).setIcon(R.drawable.bluetooth_on);
-							}
-        	        	});
-	        	    } 
-				} else {
-	        	    if (bt != null && bt.isEnabled()) {
-	        	    	if (obd != null) {
-	        	    		obd.shutdown();
-	        	    		obd = null;
-	        	    	}
-
-	        	    	bt.disable();
-	        	    	
-        	        	new Handler().post(new Runnable() {
-							public void run() {
-								myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
-							}
-        	        	});
-	        	    } 					
-				}
-			}
-		}
-	};
-	
 	public static void whereAreYou(final String origin) {
 		
 		locationResult.setDestination(origin);
@@ -725,6 +722,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	    @Override
 	    public void gotLocation(final Location location){
 
+	    	if (location == null) return;
+	    	
 	    	final String text = "http://maps.google.com/?q=" + location.getLatitude() + "+" + location.getLongitude();
 	    	
     		SmsManager sm = SmsManager.getDefault();
@@ -986,5 +985,13 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 	        return imageView;
 	    }
+	}
+	
+	private static String getStackTrace(Exception ex) {
+		final Writer result = new StringWriter();
+		final PrintWriter printWriter = new PrintWriter(result);
+		ex.printStackTrace(printWriter);
+		
+		return result.toString();
 	}
 }

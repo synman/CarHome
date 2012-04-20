@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.shellware.CarHome;
+package com.shellware.CarHome.media;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;

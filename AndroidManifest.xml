@@ -33,7 +33,7 @@
             </intent-filter>
         </activity>
 
-        <service android:exported="false" android:name=".MusicService">
+        <service android:exported="false" android:name=".media.MusicService">
             <intent-filter>
                 <action android:name="com.shellware.CarHome.action.PLAY" />
                 <action android:name="com.shellware.CarHome.action.PAUSE" />
@@ -47,7 +47,7 @@
             </intent-filter>
         </service>
 
-		<receiver android:name="RemoteControlReceiver">
+		<receiver android:name=".media.RemoteControlReceiver">
 		    <intent-filter>
 		        <!-- <action android:name="android.intent.action.MEDIA_BUTTON" /> -->
 		        <action android:name="android.media.AUDIO_BECOMING_NOISY" />

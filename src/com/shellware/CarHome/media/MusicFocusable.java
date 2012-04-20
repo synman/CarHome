@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.shellware.CarHome;
+package com.shellware.CarHome.media;
 
 /**
  * Represents something that can react to audio focus events. We implement this instead of just
