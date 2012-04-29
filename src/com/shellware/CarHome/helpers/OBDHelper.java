@@ -1,4 +1,4 @@
-package com.shellware.CarHome;
+package com.shellware.CarHome.helpers;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;

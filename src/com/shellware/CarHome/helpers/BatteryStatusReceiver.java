@@ -1,4 +1,7 @@
-package com.shellware.CarHome;
+package com.shellware.CarHome.helpers;
+
+import com.shellware.CarHome.R;
+import com.shellware.CarHome.R.drawable;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
@@ -36,13 +39,18 @@ public class BatteryStatusReceiver extends BroadcastReceiver {
 				
         	    if (bt != null && !bt.isEnabled()) {
         	    	bt.enable();
-        	        
-        	        // our obd helper class (lotsa stuff happens here)
-        	        if (obd != null) {
+
+        	    	if (obd != null) {
         	        	obd.shutdown();
         	        	obd = null;
         	        }
-    	        	obd = new OBDHelper(ctx);
+
+    	        	new Handler().postDelayed(new Runnable() {
+						public void run() {
+		        	        // our obd helper class (lotsa stuff happens here)
+		    	        	obd = new OBDHelper(ctx);
+						}
+    	        	}, 2500);
 
     	        	new Handler().post(new Runnable() {
 						public void run() {

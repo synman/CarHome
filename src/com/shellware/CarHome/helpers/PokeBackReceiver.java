@@ -15,7 +15,9 @@
  *
  */
 
-package com.shellware.CarHome;
+package com.shellware.CarHome.helpers;
+
+import com.shellware.CarHome.CarHomeActivity;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

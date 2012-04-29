@@ -81,7 +81,167 @@
         android:scaleType="fitXY"
         android:scrollbarAlwaysDrawHorizontalTrack="false" />
 
-    <Gallery
+    <SurfaceView
+        android:id="@+id/cameraView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true" android:layout_alignWithParentIfMissing="false" android:visibility="invisible"/>
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+	<RelativeLayout
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content">
+    
+		<RelativeLayout
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginLeft="20dp" 
+		    android:layout_marginTop="20dp" 
+		    android:id="@+id/watermeter">
+	
+		    <ImageView
+			    android:id="@+id/watertemp"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/watertemp" 
+			    android:scaleType="fitXY"/>
+		    	
+			<com.shellware.CarHome.ui.GaugeNeedle
+			    android:id="@+id/waterneedle"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/needle_offset" 
+			    android:scaleType="fitXY"/>
+		</RelativeLayout>
+		
+		<RelativeLayout
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginLeft="20dp" 
+		    android:layout_marginTop="20dp" 
+		    android:id="@+id/intakemeter" 
+		    android:layout_below="@id/watermeter">
+	
+		    <ImageView
+			    android:id="@+id/iat"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/iatgauge" 
+			    android:scaleType="fitXY"/>
+		    	
+			<com.shellware.CarHome.ui.GaugeNeedle
+			    android:id="@+id/iatneedle"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/needle_middle" 
+			    android:scaleType="fitXY"/>
+		</RelativeLayout>
+			
+		<RelativeLayout
+		    android:id="@+id/voltmeter"
+		    android:layout_width="175dp"
+		    android:layout_height="175dp"
+		    android:layout_marginTop="20dp"
+		    android:layout_marginRight="20dp"
+		    android:layout_alignParentRight="true">
+	
+		    <ImageView
+			    android:id="@+id/voltage"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/voltgauge" 
+			    android:scaleType="fitXY"/>
+		    	
+			<com.shellware.CarHome.ui.GaugeNeedle
+			    android:id="@+id/voltageneedle"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/needle_offset" 
+			    android:scaleType="fitXY"/>
+			</RelativeLayout>	
+			
+		<RelativeLayout
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginRight="20dp" 
+		    android:layout_marginTop="20dp" 
+		    android:id="@+id/mafmeter" 
+		    android:layout_alignParentRight="true"
+		    android:layout_below="@id/voltmeter">
+	
+		    <ImageView
+			    android:id="@+id/maf"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/mafgauge" 
+			    android:scaleType="fitXY"/>
+		    	
+			<com.shellware.CarHome.ui.GaugeNeedle
+			    android:id="@+id/mafneedle"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/needle_middle" 
+			    android:scaleType="fitXY"/>
+		</RelativeLayout>
+					
+		<RelativeLayout
+		    android:id="@+id/afrmeter"
+		    android:layout_width="250dp"
+		    android:layout_height="250dp"
+		    android:layout_marginTop="20dp" android:layout_centerInParent="true">
+	
+		    <ImageView
+			    android:id="@+id/afr"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/afr" 
+			    android:scaleType="fitXY"/>
+		    	
+			<com.shellware.CarHome.ui.GaugeNeedle
+			    android:id="@+id/afrneedle"
+			    android:layout_width="fill_parent"
+			    android:layout_height="fill_parent"
+			    android:layout_centerHorizontal="true"
+			    android:layout_centerVertical="true"
+			    android:src="@drawable/needle_middle" 
+			    android:scaleType="fitXY"/>
+		</RelativeLayout>
+
+	</RelativeLayout>
+		
+	<ImageView
+	    android:id="@+id/imageView1"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_alignParentBottom="true"
+	    android:layout_alignParentRight="true"
+	    android:src="@drawable/rx8_logo" />
+
+    <com.shellware.CarHome.ui.ProgramsGallery
         android:id="@+id/gallery"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -96,192 +256,5 @@
         android:visibility="invisible" 
         android:filterTouchesWhenObscured="true"/>
 
-    <SurfaceView
-        android:id="@+id/cameraView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true" android:layout_alignWithParentIfMissing="false" android:visibility="invisible"/>
-
-    <TextView
-        android:id="@+id/textView1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
-
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toLeftOf="@+id/textView1"
-        android:layout_marginRight="15dp"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
-    
-    <TextView
-        android:id="@+id/textView3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toRightOf="@+id/textView1"
-        android:layout_marginLeft="15dp"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
-    
-	<TextView
-        android:id="@+id/textView4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@+id/textView1"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
-    
-	<TextView
-        android:id="@+id/textView5"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@+id/textView4"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
-
-	<RelativeLayout
-	    android:layout_width="175dp"
-	    android:layout_height="175dp" 
-	    android:layout_marginLeft="20dp" 
-	    android:layout_marginTop="20dp" 
-	    android:id="@+id/watermeter">
-
-	    <ImageView
-		    android:id="@+id/watertemp"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/watertemp" 
-		    android:scaleType="fitXY"/>
-	    	
-		<com.shellware.CarHome.GaugeNeedle
-		    android:id="@+id/waterneedle"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/needle_offset" 
-		    android:scaleType="fitXY"/>
-	</RelativeLayout>
-	
-	<RelativeLayout
-	    android:layout_width="175dp"
-	    android:layout_height="175dp" 
-	    android:layout_marginLeft="20dp" 
-	    android:layout_marginTop="20dp" 
-	    android:id="@+id/intakemeter" 
-	    android:layout_below="@id/watermeter">
-
-	    <ImageView
-		    android:id="@+id/iat"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/iatgauge" 
-		    android:scaleType="fitXY"/>
-	    	
-		<com.shellware.CarHome.GaugeNeedle
-		    android:id="@+id/iatneedle"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/needle_middle" 
-		    android:scaleType="fitXY"/>
-	</RelativeLayout>
-		
-	<RelativeLayout
-	    android:id="@+id/voltmeter"
-	    android:layout_width="175dp"
-	    android:layout_height="175dp"
-	    android:layout_marginTop="20dp"
-	    android:layout_marginRight="20dp"
-	    android:layout_alignParentRight="true">
-
-	    <ImageView
-		    android:id="@+id/voltage"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/voltgauge" 
-		    android:scaleType="fitXY"/>
-	    	
-		<com.shellware.CarHome.GaugeNeedle
-		    android:id="@+id/voltageneedle"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/needle_offset" 
-		    android:scaleType="fitXY"/>
-		</RelativeLayout>	
-		
-	<RelativeLayout
-	    android:layout_width="200dp"
-	    android:layout_height="200dp" 
-	    android:layout_marginRight="20dp" 
-	    android:layout_marginTop="20dp" 
-	    android:id="@+id/mafmeter" 
-	    android:layout_alignParentRight="true"
-	    android:layout_below="@id/voltmeter">
-
-	    <ImageView
-		    android:id="@+id/maf"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/mafgauge" 
-		    android:scaleType="fitXY"/>
-	    	
-		<com.shellware.CarHome.GaugeNeedle
-		    android:id="@+id/mafneedle"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/needle_middle" 
-		    android:scaleType="fitXY"/>
-	</RelativeLayout>
-				
-	<RelativeLayout
-	    android:id="@+id/afrmeter"
-	    android:layout_width="250dp"
-	    android:layout_height="250dp"
-	    android:layout_centerHorizontal="true"
-	    android:layout_marginTop="20dp"
-	    android:layout_below="@id/textView5">
-
-	    <ImageView
-		    android:id="@+id/afr"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/afr" 
-		    android:scaleType="fitXY"/>
-	    	
-		<com.shellware.CarHome.GaugeNeedle
-		    android:id="@+id/afrneedle"
-		    android:layout_width="fill_parent"
-		    android:layout_height="fill_parent"
-		    android:layout_centerHorizontal="true"
-		    android:layout_centerVertical="true"
-		    android:src="@drawable/needle_middle" 
-		    android:scaleType="fitXY"/>
-		</RelativeLayout>
-
-	<ImageView
-	    android:id="@+id/imageView1"
-	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
-	    android:layout_alignParentBottom="true"
-	    android:layout_alignParentRight="true"
-	    android:src="@drawable/rx8_logo" />
 		
  </RelativeLayout>

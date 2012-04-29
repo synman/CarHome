@@ -35,7 +35,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
@@ -47,7 +46,6 @@ import android.location.Location;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -64,18 +62,11 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
-import android.view.ViewGroup;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
-import android.view.animation.Animation.AnimationListener;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.Gallery;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.TextView;
 
 import com.google.android.mms.APNHelper;
 import com.google.android.mms.APNHelper.APN;
@@ -86,9 +77,14 @@ import com.google.android.mms.pdu.PduPart;
 import com.google.android.mms.pdu.SendReq;
 import com.google.android.mms.transaction.HttpUtils;
 import com.gtosoft.libvoyager.session.OBD2Session;
-import com.shellware.CarHome.MyLocation.LocationResult;
+import com.shellware.CarHome.helpers.BatteryStatusReceiver;
+import com.shellware.CarHome.helpers.MyLocation;
+import com.shellware.CarHome.helpers.OBDHelper;
+import com.shellware.CarHome.helpers.MyLocation.LocationResult;
 import com.shellware.CarHome.media.MusicService;
 import com.shellware.CarHome.media.RemoteControlReceiver;
+import com.shellware.CarHome.ui.GaugeNeedle;
+import com.shellware.CarHome.ui.ProgramsGallery;
 
 public class CarHomeActivity extends Activity implements OnClickListener {
 
@@ -107,8 +103,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	private Resources res;
 	
     private Handler routineUpdateHandler = new Handler();
-    private Handler hideGalleryHandler = new Handler();
-	
 
 	private AudioManager mAudioManager;
 	private static Camera camera = null;
@@ -138,7 +132,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private SeekBar mPositionBar;
     private ImageView mArtworkImage;
     private ImageView mBackground;
-    private Gallery gallery;
+    private ProgramsGallery gallery;
 
     private boolean mMuted = false;
     private static String originator = "";
@@ -237,15 +231,9 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         });
 
         mArtworkImage = (ImageView) findViewById(R.id.artwork);
-        
-        mCameraView = (SurfaceView) findViewById(R.id.cameraView);
-                
-        gallery = (Gallery) findViewById(R.id.gallery);
-        gallery.setAdapter(new ImageAdapter(this));
+        mCameraView = (SurfaceView) findViewById(R.id.cameraView);                
+        gallery = (ProgramsGallery) findViewById(R.id.gallery);
 
-        gallery.setSelection(2, false);
-        gallery.bringToFront();
-        
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
 //            cl.getLogDialog().show();
@@ -253,160 +241,18 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	}
 	
 	private class backgroundTouchListener implements OnTouchListener {
-
 		public boolean onTouch(View view, MotionEvent motionevent) {
-
 			if (motionevent.getAction() == MotionEvent.ACTION_DOWN) {
 				if (gallery.getVisibility() != View.VISIBLE) { 
-			        gallery.setSelection(2, false);
-    				gallery.setVisibility(View.VISIBLE);
-
-    				gallery.setOnItemClickListener(clicker);
-
-    				gallery.clearAnimation();
-//    				gallery.setAlpha(1f);
-
-    				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
-    				alpha.setFillAfter(true);
-    				alpha.setDuration(1000);
-
-    				gallery.setAnimation(alpha);
-
-    				hideGalleryHandler.postDelayed(hideGallery, 10000);
+					gallery.showGallery();
 				} else {
-					gallery.setOnItemClickListener(null);
-					
-	                gallery.clearAnimation();
-	                gallery.setAlpha(1f);
-
-					AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
-					alpha.setDuration(1000);
-					alpha.setFillAfter(true);
-
-					alpha.setAnimationListener(new AnimationListener() {
-						public void onAnimationEnd(Animation animation) {
-							gallery.setVisibility(View.INVISIBLE);
-							Log.d(TAG, "gone");
-						}
-						public void onAnimationRepeat(Animation animation) {
-						}
-
-						public void onAnimationStart(Animation animation) {
-						}
-					});
-					
-					gallery.setAnimation(alpha);
+					gallery.hideGallery();
 				}
 			}
-
 			return true;
 		}	
 	}
-	
-	private Runnable hideGallery = new Runnable() {
 
-		public void run() {
-			
-			if (gallery.getVisibility() == View.VISIBLE) {
-				gallery.setOnItemClickListener(null);
-				
-                gallery.clearAnimation();
-                gallery.setAlpha(1f);
-
-				AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
-				alpha.setDuration(1000);
-				alpha.setFillAfter(true);
-
-				alpha.setAnimationListener(new AnimationListener() {
-					public void onAnimationEnd(Animation animation) {
-						gallery.setVisibility(View.INVISIBLE);
-//						Log.d(TAG, "gone");
-					}
-					public void onAnimationRepeat(Animation animation) {
-					}
-
-					public void onAnimationStart(Animation animation) {
-					}
-				});
-				
-				gallery.setAnimation(alpha);
-			}
-		}
-	};
-	
-	private OnItemClickListener clicker = new OnItemClickListener() {
-	
-		public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
-		
-//        	if (gallery.getVisibility() != View.VISIBLE) {
-//		        gallery.setSelection(2, false);
-//				gallery.setVisibility(View.VISIBLE);
-//
-//				gallery.setOnItemClickListener(clicker);
-//
-//				gallery.clearAnimation();
-////				gallery.setAlpha(1f);
-//
-//				AlphaAnimation alpha = new AlphaAnimation(0f,1f);
-//				alpha.setFillAfter(true);
-//				alpha.setDuration(1000);
-//
-//				gallery.setAnimation(alpha);
-//				return;
-//        	}
-        	
-            //Toast.makeText(ctx, "" + position, Toast.LENGTH_SHORT).show();
-
-            gallery.clearAnimation();
-//            gallery.setAlpha(1f);
-
-			AlphaAnimation alpha = new AlphaAnimation(1.0f, 0.0f);
-			alpha.setDuration(0);
-			alpha.setFillAfter(true);
-
-			alpha.setAnimationListener(new AnimationListener() {
-				public void onAnimationEnd(Animation animation) {
-					gallery.setVisibility(View.INVISIBLE);
-					gallery.setOnClickListener(null);
-					Log.d(TAG,"gone");
-				}
-				public void onAnimationRepeat(Animation animation) {
-				}
-
-				public void onAnimationStart(Animation animation) {
-				}
-			});		
-			
-        	switch (position) {
-        		case 0:                    
-            		if (camera == null) {
-            			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_FRONT, false);
-            		} else {
-            			stopCameraPreview();
-            		}
-            		break;
-        		case 1:
-        		    Intent email = getPackageManager().getLaunchIntentForPackage("com.android.email");
-        		    startActivity(email);
-        		    break;
-        		case 2:
-        			String url = "google.navigation:fd=true";
-        			Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));            
-        			startActivity(i);
-        			break;
-        		case 3:
-        			Intent intent = new Intent(Intent.ACTION_MAIN);
-        			intent.addCategory(Intent.CATEGORY_LAUNCHER);
-        			intent.setClassName("com.android.mms", "com.android.mms.ui.ConversationList");
-        			startActivity(intent);
-        			break;
-    			default:
-        			break;	
-        	}
-			
-		} 	
-	};
-	
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
             return super.dispatchKeyEvent(event);
@@ -422,12 +268,18 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         super.onResume();
         
         // our obd helper class (lotsa stuff happens here)
-	try {
-	    if (obd == null) obd = new OBDHelper(this);
-	} catch (Exception ex) {
-		// do nothing
-	}
-        routineUpdateHandler.post(routineUpdate);
+		if (obd != null) {
+			obd.shutdown();
+			obd = null;
+		}
+    	new Handler().postDelayed(new Runnable() {
+			public void run() {
+    	        // our obd helper class (lotsa stuff happens here)
+	        	obd = new OBDHelper(ctx);
+			}
+    	}, 2500);
+
+    	routineUpdateHandler.post(routineUpdate);
     }
     
     double lastWater = 32;
@@ -450,15 +302,9 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			} else {
 				mPlayButton.setBackgroundResource(R.drawable.playicon);
 			}
-			
+		
 			try {				
-//				((TextView) findViewById(R.id.textView1)).setText(String.format("Voltage: %.1fv", obd.getVoltage()));
-//				((TextView) findViewById(R.id.textView2)).setText(String.format("IAT: %.0f\u00b0", obd.getIat()));
-//				((TextView) findViewById(R.id.textView3)).setText(String.format("Coolant: %.0f\u00b0", obd.getCoolant()));
-//				((TextView) findViewById(R.id.textView4)).setText(String.format("AFR: %.2f", obd.getWideband()));
-//				((TextView) findViewById(R.id.textView5)).setText(String.format("MAF: %.2fg/s", obd.getMaf()));
-				
-//				((TextView) findViewById(R.id.textView1)).setText(String.format("Fuel Level: %.2f%", obd.getFuel()));
+				((TextView) findViewById(R.id.textView1)).setText(String.format("Fuel Level: %.2f%", obd.getFuel()));
 //				((TextView) findViewById(R.id.textView5)).setText(String.format("EGT (Catalyst): %.2f\u00b0 F", obd.getEgt()));
 				
 				waterNeedle.setValue(obd.getCoolant());
@@ -492,7 +338,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     protected void onDestroy() {
         super.onDestroy();
         
-        hideGalleryHandler.removeCallbacks(hideGallery);
+        gallery.destroyGallery();
         
         UiModeManager manager = (UiModeManager)getSystemService(Context.UI_MODE_SERVICE);    
         manager.disableCarMode(UiModeManager.DISABLE_CAR_MODE_GO_HOME);
@@ -540,7 +386,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
            	    	try {
 						Thread.sleep(5000);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
            	    	
@@ -551,7 +396,13 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         	    		obd = null;        	    		 
         	    	}
 
-        	    	obd = new OBDHelper(this);
+    	        	new Handler().postDelayed(new Runnable() {
+						public void run() {
+		        	        // our obd helper class (lotsa stuff happens here)
+		    	        	obd = new OBDHelper(ctx);
+						}
+    	        	}, 2500);
+
         	    	
         	    	item.setIcon(R.drawable.bluetooth_on);
         	    } else { 
@@ -604,6 +455,14 @@ public class CarHomeActivity extends Activity implements OnClickListener {
                 return super.onOptionsItemSelected(item);
         }
     }
+	
+	public static void toggleCamera() {
+		if (camera == null) {
+			startCameraPreview(Camera.CameraInfo.CAMERA_FACING_FRONT, false);
+		} else {
+			stopCameraPreview();
+		}
+	}
 	
 	private static void startCameraPreview(int whichCamera, boolean withCallback) {
 		
@@ -909,7 +768,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	        	}	
 
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				
 			} finally {
@@ -936,57 +794,11 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","ls"});
 			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","reboot now"});
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 	
-	public class ImageAdapter extends BaseAdapter {
-	    int mGalleryItemBackground;
-	    private Context mContext;
-
-	    private Integer[] mImageIds = {
-	            R.drawable.camera,
-	            R.drawable.email,
-	            R.drawable.navigate,
-	            R.drawable.sms,
-//	            R.drawable.rx8logo,
-//	            R.drawable.bluetooth_off,
-	            R.drawable.configuration
-	    };
-
-	    public ImageAdapter(Context c) {
-	        mContext = c;
-	        TypedArray attr = mContext.obtainStyledAttributes(R.styleable.HelloGallery);
-	        mGalleryItemBackground = attr.getResourceId(
-	                R.styleable.HelloGallery_android_galleryItemBackground, 0);
-	        attr.recycle();
-	    }
-
-	    public int getCount() {
-	        return mImageIds.length;
-	    }
-
-	    public Object getItem(int position) {
-	        return position;
-	    }
-
-	    public long getItemId(int position) {
-	        return position;
-	    }
-
-	    public View getView(int position, View convertView, ViewGroup parent) {
-	        ImageView imageView = new ImageView(mContext);
-
-	        imageView.setImageResource(mImageIds[position]);
-	        imageView.setLayoutParams(new Gallery.LayoutParams(150, 100));
-	        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-	        imageView.setBackgroundResource(mGalleryItemBackground);
-
-	        return imageView;
-	    }
-	}
-	
+	@SuppressWarnings("unused")
 	private static String getStackTrace(Exception ex) {
 		final Writer result = new StringWriter();
 		final PrintWriter printWriter = new PrintWriter(result);
