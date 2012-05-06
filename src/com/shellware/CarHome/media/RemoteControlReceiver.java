@@ -40,7 +40,7 @@ public class RemoteControlReceiver extends BroadcastReceiver {
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_STOP:
 //	                    Toast.makeText(context, "Stop Pressed", Toast.LENGTH_SHORT).show();
-	                    context.startService(new Intent(MusicService.ACTION_STOP));
+	                    context.startService(new Intent(MusicService.ACTION_PAUSE));
 	                    break;
 	                case KeyEvent.KEYCODE_MEDIA_NEXT:
 //	                    Toast.makeText(context, "Next Track Pressed", Toast.LENGTH_SHORT).show();

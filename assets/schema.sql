@@ -307,6 +307,7 @@ INSERT INTO "obdRequest" VALUES(116,1,'GM_TRANNY_MOTOR_STATUS','BITWISE','221978
 INSERT INTO "obdRequest" VALUES(117,1,'GM_KNOCK_RETARD','Knock Deg.','2211A6','B*256,X/23','GM Knock Retard in Degrees',9999,NULL,NULL,0,360,1,'22','11A6',NULL);
 INSERT INTO "obdRequest" VALUES(118,1,'GM_SUPER_BOOST','Boost%','221174','A*100,X/256','GM Turbocharger Boost %',9999,NULL,NULL,0,200,1,'22','1174',NULL);
 INSERT INTO "obdRequest" VALUES(119,1,'WIDEBAND_O2','LamC 02S1','0134','A*256,X+B,X/32768,X*14.7','O2S1_WR_lambda(1) Equiv Ratio milliamps',9999,NULL,NULL,0,20,4,'01','34',NULL);
+INSERT INTO "obdRequest" VALUES(120,1,'TPMS_PRES_1','TPMS Pressure Tire 1','22C9011','A*1.373','TPMS_PRES_1',9999,NULL,NULL,0,20,4,'22','C9011',NULL);
 
 # insert oil temp and tranny temp PIDs here. 
 

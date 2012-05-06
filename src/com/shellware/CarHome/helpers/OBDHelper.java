@@ -37,6 +37,7 @@ public class OBDHelper {
 	private float maf = 0f;
 	private float wideband = 0f;
 	private float egt = 0f;
+	private String tire1Pres = "";
 	
 	public OBDHelper(Context ctx) {
 	    
@@ -214,7 +215,8 @@ public class OBDHelper {
 			if (DPN.equals("MAF_FLOW_RATE")) maf = getPrimaryDPNValue(sDecodedData);
 			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData);
 			if (DPN.equals("WIDEBAND_O2")) wideband = getPrimaryDPNValue(sDecodedData);
-//			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData);
+			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData);
+			if (DPN.equals("TPMS_PRES_1")) tire1Pres = sDecodedData;
 		}
 	};
 
@@ -257,6 +259,9 @@ public class OBDHelper {
 				// just connected? OBD mode?
 				if (hs != null && hs.getRoutineScan() != null) {
 					if (newState >= OBD2Session.STATE_OBDCONNECTED) {
+
+//						hs.getEBT().sendATCommand2("ATSH000751");
+
 						// Add some datapoints to the "routine scan" which is an
 						// automatic loop that continuously scans those PIDs.
 						hs.setRoutineScanDelay(500);
@@ -267,7 +272,8 @@ public class OBDHelper {
 						hs.getRoutineScan().addDPN("MAF_FLOW_RATE");
 						hs.getRoutineScan().addDPN("FUEL_LEVEL");
 						hs.getRoutineScan().addDPN("WIDEBAND_O2");
-//						hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
+						hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
+//						hs.getRoutineScan().addDPN("TPMS_PRES_1");
 						
 					} else {
 						hs.getRoutineScan().removeAllDPNs();
@@ -310,7 +316,8 @@ public class OBDHelper {
 		hs.getRoutineScan().addDPN("MAF_FLOW_RATE");
 		hs.getRoutineScan().addDPN("FUEL_LEVEL");
 		hs.getRoutineScan().addDPN("WIDEBAND_O2");
-//		hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
+		hs.getRoutineScan().addDPN("CATALYST_TEMP_B1S1");
+//		hs.getRoutineScan().addDPN("TPMS_PRES_1");
 	}
 
 	/**
@@ -367,7 +374,11 @@ public class OBDHelper {
 	}
 
 	public float getEgt() {
-		return egt;
+		return (float) (1.8 * egt + 32);
+	}
+
+	public String getTire1Pres() {
+		return tire1Pres;
 	}
 	
 	

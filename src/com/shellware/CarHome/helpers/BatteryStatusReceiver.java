@@ -1,8 +1,5 @@
 package com.shellware.CarHome.helpers;
 
-import com.shellware.CarHome.R;
-import com.shellware.CarHome.R.drawable;
-
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,6 +7,9 @@ import android.content.Intent;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.view.Menu;
+
+import com.shellware.CarHome.R;
+import com.shellware.CarHome.media.MusicService;
 
 public class BatteryStatusReceiver extends BroadcastReceiver {
 
@@ -49,8 +49,10 @@ public class BatteryStatusReceiver extends BroadcastReceiver {
 						public void run() {
 		        	        // our obd helper class (lotsa stuff happens here)
 		    	        	obd = new OBDHelper(ctx);
+		    				if (MusicService.mState == MusicService.State.Paused) 
+		    	        		ctx.startService(new Intent(MusicService.ACTION_PLAY));		    				
 						}
-    	        	}, 2500);
+    	        	}, 5000);
 
     	        	new Handler().post(new Runnable() {
 						public void run() {
@@ -63,6 +65,9 @@ public class BatteryStatusReceiver extends BroadcastReceiver {
 				
 				isCharging = false;
 				
+//				if (MusicService.mState == MusicService.State.Playing) 
+//	        		ctx.startService(new Intent(MusicService.ACTION_PAUSE));
+				
         	    if (bt != null && bt.isEnabled()) {
     	        	new Handler().postDelayed(new Runnable() {
 						public void run() {
@@ -74,6 +79,7 @@ public class BatteryStatusReceiver extends BroadcastReceiver {
 
 			        	    	bt.disable();		        	    	
 								myMenu.getItem(0).setIcon(R.drawable.bluetooth_off);
+				        		ctx.startService(new Intent(MusicService.ACTION_PAUSE));
 							}
 						}
     	        	}, 30000);
