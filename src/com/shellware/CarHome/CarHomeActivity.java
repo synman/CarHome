@@ -114,6 +114,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private Handler routineUpdateHandler = new Handler();
     private Handler tpmsUpdateHandler = new Handler();
     private Handler brightnessUpdateHandler = new Handler();
+    private Handler obdHelperHelpHandler = new Handler();
 
 	private AudioManager mAudioManager;
 	private static Camera camera = null;
@@ -140,6 +141,11 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	GaugeNeedle tpms3Needle;
 	GaugeNeedle tpms4Needle;
 	
+	GaugeNeedle temp1Needle;
+	GaugeNeedle temp2Needle;
+	GaugeNeedle temp3Needle;
+	GaugeNeedle temp4Needle;
+	
     private Button mPlayButton;
     private Button mStopButton;
     private Button mForwardButton;
@@ -158,6 +164,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private static String originator = "";
     private static boolean wifiEnabled = false;
     private static int activeCamera = 0;
+    private long lastFuelAlarm = 0;
     
 	private Menu myMenu = null;
 
@@ -197,6 +204,11 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         tpms2Needle = (GaugeNeedle) findViewById(R.id.tpms2needle);
         tpms3Needle = (GaugeNeedle) findViewById(R.id.tpms3needle);
         tpms4Needle = (GaugeNeedle) findViewById(R.id.tpms4needle);
+        
+        temp1Needle = (GaugeNeedle) findViewById(R.id.temp1needle);
+        temp2Needle = (GaugeNeedle) findViewById(R.id.temp2needle);
+        temp3Needle = (GaugeNeedle) findViewById(R.id.temp3needle);
+        temp4Needle = (GaugeNeedle) findViewById(R.id.temp4needle);
 
         waterNeedle.setPivotPoint(.65f);
         waterNeedle.setMinValue(100);
@@ -217,7 +229,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         mafNeedle.setMaxDegrees(132);
         
         afrNeedle.setPivotPoint(.5f);
-        afrNeedle.setMinValue(100);
+        afrNeedle.setMinValue(110);
         afrNeedle.setMaxValue(200);
         afrNeedle.setMinDegrees(-180);
         afrNeedle.setMaxDegrees(90);
@@ -257,6 +269,30 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         tpms4Needle.setMaxValue(400);
         tpms4Needle.setMinDegrees(-135);
         tpms4Needle.setMaxDegrees(135);
+        
+        temp1Needle.setPivotPoint(.5f);
+        temp1Needle.setMinValue(-20);
+        temp1Needle.setMaxValue(120);
+        temp1Needle.setMinDegrees(-150);
+        temp1Needle.setMaxDegrees(150);        
+        
+        temp2Needle.setPivotPoint(.5f);
+        temp2Needle.setMinValue(-20);
+        temp2Needle.setMaxValue(120);
+        temp2Needle.setMinDegrees(-150);
+        temp2Needle.setMaxDegrees(150);        
+        
+        temp3Needle.setPivotPoint(.5f);
+        temp3Needle.setMinValue(-20);
+        temp3Needle.setMaxValue(120);
+        temp3Needle.setMinDegrees(-150);
+        temp3Needle.setMaxDegrees(150);        
+        
+        temp4Needle.setPivotPoint(.5f);
+        temp4Needle.setMinValue(-20);
+        temp4Needle.setMaxValue(120);
+        temp4Needle.setMinDegrees(-150);
+        temp4Needle.setMaxDegrees(150);        
         
         mPlayButton = (Button) findViewById(R.id.playbutton);
         mPlayButton.setOnClickListener(this);
@@ -374,31 +410,39 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 				if (obd != null && obd.getHs() != null &&
 						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
 						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
-		
-	//					mMiscText.setText(String.format("EGT: %.0f\u00b0 -<>- Fuel Level: %.1f%%", obd.getEgt(), obd.getFuel()));
 					
 					waterNeedle.setValue(obd.getCoolant());
 					voltageNeedle.setValue(obd.getVoltage() * 10);
 					mafNeedle.setValue(obd.getMaf());
-					afrNeedle.setValue(200 - (obd.getWideband() * 10) + 100);
+					afrNeedle.setValue(200 - (obd.getWideband() * 10) + 110);
 					iatNeedle.setValue(obd.getIat());
 					egtNeedle.setValue(obd.getEgt());
 									
-					if (obd.getFuel() < 15f) {
+					if (obd.getFuel() > 0 && obd.getFuel() < 15f) {
 						if (mLowFuel.getVisibility() == View.INVISIBLE) {
 							mLowFuel.setVisibility(View.VISIBLE);
 							
-							Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-							Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
-							r.play();
-							
+							if (lastFuelAlarm + 60000 < System.currentTimeMillis()) {
+								Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+								Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+								r.play();
+								
+								lastFuelAlarm = System.currentTimeMillis();
+							}
 						} else {
 							mLowFuel.setVisibility(View.INVISIBLE);
 						}
 					} else {
-						mLowFuel.setVisibility(View.INVISIBLE);
+						if (mLowFuel.getVisibility() == View.VISIBLE) mLowFuel.setVisibility(View.INVISIBLE);
 					}
-				}				
+				} else {
+					waterNeedle.setValue(180);
+					voltageNeedle.setValue(130);
+					mafNeedle.setValue(100);
+					afrNeedle.setValue(200 - 147 + 110);
+					iatNeedle.setValue(100);
+					egtNeedle.setValue(900);					
+				}
 			} catch (Exception ex) {
 				// do nothing -- null pointer likely from obd
 				mMiscText.setText(ex.getMessage() + " " + getStackTrace(ex));
@@ -414,12 +458,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 		public void run() {
 			
+			routineUpdateHandler.removeCallbacks(routineUpdate);
+			
 			try {				
 				if (obd != null && obd.getHs() != null &&
 						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
 						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
-					
-					routineUpdateHandler.removeCallbacks(routineUpdate);
 					
 					obd.getHs().getEBT().sendATCommand2("ATSH000751");
 					
@@ -429,36 +473,68 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 					// reset our connection to clear the headers -- need to figure out a better way
 					obd.getHs().getEBT().sendATCommand2("ATD");
 					
-					routineUpdateHandler.postDelayed(routineUpdate, ROUTINE_UPDATE_INTERVAL);
+					if (tpmsPresBuf != null && !tpmsPresBuf.contains("NO DATA")) {
+						try {
+							final String[] tpmsPres = tpmsPresBuf.split(" ");
+							
+							if (tpmsPres.length > 5) {
+								final float tpmsPres4 = Integer.parseInt(tpmsPres[tpmsPres.length - 2], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres3 = Integer.parseInt(tpmsPres[tpmsPres.length - 3], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres2 = Integer.parseInt(tpmsPres[tpmsPres.length - 4], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres1 = Integer.parseInt(tpmsPres[tpmsPres.length - 5], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								
+								tpms1Needle.setValue(tpmsPres1 * 10);
+								tpms2Needle.setValue(tpmsPres2 * 10);
+								tpms3Needle.setValue(tpmsPres3 * 10);
+								tpms4Needle.setValue(tpmsPres4 * 10);
+							}
+						} catch (Exception ex) {
+							tpms1Needle.setValue(350);
+							tpms2Needle.setValue(350);
+							tpms3Needle.setValue(350);
+							tpms4Needle.setValue(350);
+						}
+					}
 					
-					final String[] tpmsPres = tpmsPresBuf.split(" ");
+					if (tpmsTempBuf != null && !tpmsTempBuf.contains("NO DATA")) {
+						try {					
+							final String[] tpmsTemp = tpmsTempBuf.split(" ");
+							
+							if (tpmsTemp.length > 5) {
+								final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 40) + 32);
+								final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 40) + 32);
+								final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 40) + 32);
+								final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 40) + 32);
+								
+								temp1Needle.setValue(tpmsTemp1);
+								temp2Needle.setValue(tpmsTemp2);
+								temp3Needle.setValue(tpmsTemp3);
+								temp4Needle.setValue(tpmsTemp4);
+							}
+						} catch (Exception ex) {
+							temp1Needle.setValue(50);
+							temp2Needle.setValue(50);
+							temp3Needle.setValue(50);
+							temp4Needle.setValue(50);
+						}
+					}
+				} else {
+					tpms1Needle.setValue(350);
+					tpms2Needle.setValue(350);
+					tpms3Needle.setValue(350);
+					tpms4Needle.setValue(350);
 					
-					final float tpmsPres4 = Integer.parseInt(tpmsPres[tpmsPres.length - 2], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-					final float tpmsPres3 = Integer.parseInt(tpmsPres[tpmsPres.length - 3], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-					final float tpmsPres2 = Integer.parseInt(tpmsPres[tpmsPres.length - 4], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-					final float tpmsPres1 = Integer.parseInt(tpmsPres[tpmsPres.length - 5], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-					
-					tpms1Needle.setValue(tpmsPres1 * 10);
-					tpms2Needle.setValue(tpmsPres2 * 10);
-					tpms3Needle.setValue(tpmsPres3 * 10);
-					tpms4Needle.setValue(tpmsPres4 * 10);
-					
-					final String[] tpmsTemp = tpmsTempBuf.split(" ");
-					
-					final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 40) + 32);
-					final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 40) + 32);
-					final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 40) + 32);
-					final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 40) + 32);
-					
-	//				mMiscText.setText(tpmsPres + "\n" + tpmsTemp);
-	//				mMiscText.setText(String.format("Pressure: %.1f - %.1f - %.1f - %.1f\nTemperature: %.1f - %.1f - %.1f - %.1f", tpmsPres1, tpmsPres2, tpmsPres3, tpmsPres4,
-	//																										tpmsTemp1, tpmsTemp2, tpmsTemp3, tpmsTemp4));				
+					temp1Needle.setValue(50);
+					temp2Needle.setValue(50);
+					temp3Needle.setValue(50);
+					temp4Needle.setValue(50);					
 				}
 			} catch (Exception ex) {
 				mMiscText.setText(ex.getMessage() + " " + getStackTrace(ex));
 				Log.d(TAG, ex.getMessage() + " " + getStackTrace(ex));
 				
 			} finally {
+				routineUpdateHandler.postDelayed(routineUpdate, ROUTINE_UPDATE_INTERVAL);				
 				tpmsUpdateHandler.postDelayed(tpmsUpdate, TPMS_UPDATE_INTERVAL);
 			}
 		}
@@ -473,23 +549,23 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			
 			// Winter
 			if (cal.get(Calendar.MONTH) >= Calendar.DECEMBER || cal.get(Calendar.MONTH) < Calendar.APRIL) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 17) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 17) brightness = 1f;
+				if (cal.get(Calendar.HOUR_OF_DAY) > 17 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) < 17  && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
 			}			
 			// Spring
 			if (cal.get(Calendar.MONTH) >= Calendar.APRIL || cal.get(Calendar.MONTH) < Calendar.JULY) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 18) brightness = 1f;					
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) < 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;					
 			}				
 			// Summer
 			if (cal.get(Calendar.MONTH) >= Calendar.JULY || cal.get(Calendar.MONTH) < Calendar.OCTOBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 19) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 19) brightness = 1f;
+				if (cal.get(Calendar.HOUR_OF_DAY) > 19 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) < 19 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
 			}				
 			// Fall
 			if (cal.get(Calendar.MONTH) >= Calendar.OCTOBER || cal.get(Calendar.MONTH) < Calendar.DECEMBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 18) brightness = 1f;			
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) < 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;			
 			}       
 
 			WindowManager.LayoutParams lp = getWindow().getAttributes();
