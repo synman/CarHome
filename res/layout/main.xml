@@ -148,8 +148,7 @@
 		    android:id="@+id/afrmeter"
 		    android:layout_width="175dp"
 		    android:layout_height="175dp" 
-		    android:layout_centerHorizontal="true" 
-		    android:layout_marginTop="20dp">
+		    android:layout_centerHorizontal="true">
 	
 		    <ImageView
 			    android:id="@+id/afr"
@@ -174,7 +173,7 @@
 		    android:layout_width="175dp"
 		    android:layout_height="175dp" 
 		    android:id="@+id/tpmsmeter" 
-		    android:layout_marginTop="125dp" 
+		    android:layout_marginTop="100dp" 
 		    android:layout_marginLeft="-10dp" 
 		    android:layout_toRightOf="@id/afrmeter">
 
@@ -225,7 +224,7 @@
 		    android:layout_width="175dp"
 		    android:layout_height="175dp" 
 		    android:id="@+id/tiremeter" 
-		    android:layout_marginTop="120dp" 
+		    android:layout_marginTop="100dp" 
 		    android:layout_toLeftOf="@id/afrmeter" android:layout_marginRight="-10dp">
 	
 		    <ImageView

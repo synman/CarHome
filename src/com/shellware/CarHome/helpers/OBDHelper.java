@@ -209,13 +209,13 @@ public class OBDHelper {
 		@Override
 		public void onDPArrived(String DPN, final String sDecodedData, int iDecodedData) {
 
-			if (DPN.equals("VOLTS")) voltage = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("TEMP_INTAKE")) iat = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("TEMP_COOLANT")) coolant = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("MAF_FLOW_RATE")) maf = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("WIDEBAND_O2")) wideband = getPrimaryDPNValue(sDecodedData);
-			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData);
+			if (DPN.equals("VOLTS")) voltage = getPrimaryDPNValue(sDecodedData, voltage);
+			if (DPN.equals("TEMP_INTAKE")) iat = getPrimaryDPNValue(sDecodedData, iat);
+			if (DPN.equals("TEMP_COOLANT")) coolant = getPrimaryDPNValue(sDecodedData, coolant);
+			if (DPN.equals("MAF_FLOW_RATE")) maf = getPrimaryDPNValue(sDecodedData, maf);
+			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData, fuel);
+			if (DPN.equals("WIDEBAND_O2")) wideband = getPrimaryDPNValue(sDecodedData, wideband);
+			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData, egt);
 			if (DPN.equals("TPMS_PRES_1")) tire1Pres = sDecodedData;
 		}
 	};
@@ -326,7 +326,11 @@ public class OBDHelper {
 	 * @param decodedData
 	 * @return
 	 */
-	private float getPrimaryDPNValue(String decodedData) {
+//	private float getPrimaryDPNValue(String decodedData) {
+//		return getPrimaryDPNValue(decodedData, 0);
+//	}
+	
+	private float getPrimaryDPNValue(String decodedData, final float defaultValue) {
 		float Y = 0f;
 
 		// do our best to extract the data value.
@@ -342,6 +346,7 @@ public class OBDHelper {
 			}
 		}
 
+		if (Y == 0) Y = defaultValue;
 		return Y;
 	}
 

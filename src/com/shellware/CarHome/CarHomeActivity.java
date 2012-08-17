@@ -230,7 +230,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         
         afrNeedle.setPivotPoint(.5f);
         afrNeedle.setMinValue(110);
-        afrNeedle.setMaxValue(200);
+        afrNeedle.setMaxValue(220);
         afrNeedle.setMinDegrees(-180);
         afrNeedle.setMaxDegrees(90);
         
@@ -549,23 +549,23 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			
 			// Winter
 			if (cal.get(Calendar.MONTH) >= Calendar.DECEMBER || cal.get(Calendar.MONTH) < Calendar.APRIL) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 17 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 17  && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
+				if (cal.get(Calendar.HOUR_OF_DAY) > 17 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 17 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
 			}			
 			// Spring
-			if (cal.get(Calendar.MONTH) >= Calendar.APRIL || cal.get(Calendar.MONTH) < Calendar.JULY) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;					
+			if (cal.get(Calendar.MONTH) >= Calendar.APRIL && cal.get(Calendar.MONTH) < Calendar.JULY) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;					
 			}				
 			// Summer
-			if (cal.get(Calendar.MONTH) >= Calendar.JULY || cal.get(Calendar.MONTH) < Calendar.OCTOBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 19 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 19 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
+			if (cal.get(Calendar.MONTH) >= Calendar.JULY && cal.get(Calendar.MONTH) < Calendar.OCTOBER) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 19 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 19 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
 			}				
 			// Fall
-			if (cal.get(Calendar.MONTH) >= Calendar.OCTOBER || cal.get(Calendar.MONTH) < Calendar.DECEMBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18 && cal.get(Calendar.HOUR_OF_DAY) < 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) < 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;			
+			if (cal.get(Calendar.MONTH) >= Calendar.OCTOBER && cal.get(Calendar.MONTH) < Calendar.DECEMBER) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;			
 			}       
 
 			WindowManager.LayoutParams lp = getWindow().getAttributes();
