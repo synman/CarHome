@@ -5,11 +5,13 @@ import com.shellware.CarHome.R;
 import com.shellware.CarHome.R.drawable;
 import com.shellware.CarHome.R.styleable;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.TypedArray;
 import android.net.Uri;
 import android.os.Handler;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -162,6 +164,9 @@ public class ProgramsGallery extends Gallery {
 				}
 			});		
 			
+			String url;
+			Intent i;
+			
         	switch (position) {
         		case 0:                    
         				CarHomeActivity.toggleCamera();
@@ -171,15 +176,32 @@ public class ProgramsGallery extends Gallery {
         		    context.startActivity(email);
         		    break;
         		case 2:
-        			String url = "google.navigation:fd=true";
-        			Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));            
+        			url = "google.navigation:fd=true";
+        			i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));            
         			context.startActivity(i);
         			break;
         		case 3:
-        			Intent intent = new Intent(Intent.ACTION_MAIN);
-        			intent.addCategory(Intent.CATEGORY_LAUNCHER);
-        			intent.setClassName("com.android.mms", "com.android.mms.ui.ConversationList");
-        			context.startActivity(intent);
+        			i = new Intent(Intent.ACTION_MAIN);
+        			i.addCategory(Intent.CATEGORY_LAUNCHER);
+        			i.setClassName("com.android.mms", "com.android.mms.ui.ConversationList");
+        			context.startActivity(i);
+        			break;
+        		case 4:
+    				i = new Intent(Intent.ACTION_MAIN, null);
+    				i.addCategory(Intent.CATEGORY_LAUNCHER);
+
+    				final ComponentName cn = new ComponentName(
+    						"com.shellware.adaptronic.adaptive.tuner",
+    						"com.shellware.adaptronic.adaptive.tuner.MainActivity");
+
+    				i.setComponent(cn);
+
+    				i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+    				context.startActivity(i);
+        			break;
+        		case 5:
+        			context.startActivity(new Intent(Settings.ACTION_SETTINGS));
         			break;
     			default:
         			break;	
@@ -193,13 +215,12 @@ public class ProgramsGallery extends Gallery {
 	    private Context mContext;
 
 	    private Integer[] mImageIds = {
-	            R.drawable.camera,
-	            R.drawable.email,
-	            R.drawable.navigate,
-	            R.drawable.sms,
-//	            R.drawable.rx8logo,
-//	            R.drawable.bluetooth_off,
-	            R.drawable.configuration
+	            R.drawable.camera,			// 0
+	            R.drawable.email,			// 1
+	            R.drawable.navigate,		// 2
+	            R.drawable.sms,				// 3
+	            R.drawable.adaptive_tuner,	// 4
+	            R.drawable.configuration	// 5
 	    };
 
 	    public ImageAdapter(Context c) {

@@ -213,7 +213,7 @@ public class OBDHelper {
 			if (DPN.equals("TEMP_INTAKE")) iat = getPrimaryDPNValue(sDecodedData, iat);
 			if (DPN.equals("TEMP_COOLANT")) coolant = getPrimaryDPNValue(sDecodedData, coolant);
 			if (DPN.equals("MAF_FLOW_RATE")) maf = getPrimaryDPNValue(sDecodedData, maf);
-			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData, fuel);
+			if (DPN.equals("FUEL_LEVEL")) fuel = getPrimaryDPNValue(sDecodedData, fuel, 5);
 			if (DPN.equals("WIDEBAND_O2")) wideband = getPrimaryDPNValue(sDecodedData, wideband);
 			if (DPN.equals("CATALYST_TEMP_B1S1")) egt = getPrimaryDPNValue(sDecodedData, egt);
 			if (DPN.equals("TPMS_PRES_1")) tire1Pres = sDecodedData;
@@ -264,7 +264,7 @@ public class OBDHelper {
 
 						// Add some datapoints to the "routine scan" which is an
 						// automatic loop that continuously scans those PIDs.
-						hs.setRoutineScanDelay(500);
+						hs.setRoutineScanDelay(250);
 
 						hs.getRoutineScan().addDPN("VOLTS");
 						hs.getRoutineScan().addDPN("TEMP_INTAKE");
@@ -308,7 +308,7 @@ public class OBDHelper {
 		if (hs.getRoutineScan() == null) return;
 	
 		// add one or more datapoints to the routine scan class so that it actively scans that PID to generate DPN arrived events. 
-		hs.setRoutineScanDelay(500);
+		hs.setRoutineScanDelay(250);
 
 		hs.getRoutineScan().addDPN("VOLTS");
 		hs.getRoutineScan().addDPN("TEMP_INTAKE");
@@ -326,11 +326,11 @@ public class OBDHelper {
 	 * @param decodedData
 	 * @return
 	 */
-//	private float getPrimaryDPNValue(String decodedData) {
-//		return getPrimaryDPNValue(decodedData, 0);
-//	}
-	
 	private float getPrimaryDPNValue(String decodedData, final float defaultValue) {
+		return getPrimaryDPNValue(decodedData, defaultValue, 0);
+	}
+
+	private float getPrimaryDPNValue(String decodedData, final float defaultValue, final int maxVariance) {
 		float Y = 0f;
 
 		// do our best to extract the data value.
@@ -347,6 +347,8 @@ public class OBDHelper {
 		}
 
 		if (Y == 0) Y = defaultValue;
+		if (maxVariance != 0 && Math.abs(Y - defaultValue) > maxVariance) Y = defaultValue;
+		
 		return Y;
 	}
 

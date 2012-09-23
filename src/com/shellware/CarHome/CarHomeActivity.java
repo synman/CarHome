@@ -55,7 +55,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.telephony.SmsManager;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -95,6 +94,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 	private final static String TAG = "CarHomeActivity";
     private static final String FEATURE_ENABLE_MMS = "enableMMS";
+    private static boolean debugMode = false;
     
     private static final int APN_ALREADY_ACTIVE     = 0;
 //    private static final int APN_REQUEST_STARTED    = 1;
@@ -103,9 +103,13 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     
     private final static float KPI_TO_PSI_MULTIPLIER = .14503773773020923f;
     
-    private final static int ROUTINE_UPDATE_INTERVAL = 500;
+    private final static int ROUTINE_UPDATE_INTERVAL = 250;
     private final static int TPMS_UPDATE_INTERVAL = 30000;
+    private final static int MUSIC_UPDATE_INTERVAL = 1000;
     private final static int BRIGHTNESS_UPDATE_INTERVAL = 60000;
+    
+    private final static float BRIGHTNESS_MINIMUM = .05f;
+    private final static float BRIGHTNESS_MAXIMUM = 1f;
 
 	private static Context ctx = null;
 	private SharedPreferences prefs;
@@ -114,7 +118,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private Handler routineUpdateHandler = new Handler();
     private Handler tpmsUpdateHandler = new Handler();
     private Handler brightnessUpdateHandler = new Handler();
-    private Handler obdHelperHelpHandler = new Handler();
+//    private Handler obdHelperHelpHandler = new Handler();
+    private Handler musicUpdateHandler = new Handler();
 
 	private AudioManager mAudioManager;
 	private static Camera camera = null;
@@ -129,22 +134,24 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	private static SurfaceView mCameraView;
 	private static SurfaceHolder mCameraHolder = null;
 	
-	GaugeNeedle waterNeedle;
-	GaugeNeedle voltageNeedle;
-	GaugeNeedle afrNeedle;
-	GaugeNeedle iatNeedle;
-	GaugeNeedle mafNeedle;
-	GaugeNeedle egtNeedle;
+	private Menu myMenu = null;
+
+	private GaugeNeedle waterNeedle;
+	private GaugeNeedle voltageNeedle;
+	private GaugeNeedle afrNeedle;
+	private GaugeNeedle iatNeedle;
+	private GaugeNeedle mafNeedle;
+	private GaugeNeedle egtNeedle;
 	
-	GaugeNeedle tpms1Needle;
-	GaugeNeedle tpms2Needle;
-	GaugeNeedle tpms3Needle;
-	GaugeNeedle tpms4Needle;
+	private GaugeNeedle tpms1Needle;
+	private GaugeNeedle tpms2Needle;
+	private GaugeNeedle tpms3Needle;
+	private GaugeNeedle tpms4Needle;
 	
-	GaugeNeedle temp1Needle;
-	GaugeNeedle temp2Needle;
-	GaugeNeedle temp3Needle;
-	GaugeNeedle temp4Needle;
+	private GaugeNeedle temp1Needle;
+	private GaugeNeedle temp2Needle;
+	private GaugeNeedle temp3Needle;
+	private GaugeNeedle temp4Needle;
 	
     private Button mPlayButton;
     private Button mStopButton;
@@ -158,15 +165,15 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     private ImageView mLowFuel;
     private ProgramsGallery gallery;
 
-    private TextView mMiscText;
+    private static TextView mMiscText;
     
     private boolean mMuted = false;
     private static String originator = "";
     private static boolean wifiEnabled = false;
     private static int activeCamera = 0;
     private long lastFuelAlarm = 0;
-    
-	private Menu myMenu = null;
+	private long lastSongId = 0;
+	private boolean tpmsUpdateRunning = false;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -229,7 +236,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         mafNeedle.setMaxDegrees(132);
         
         afrNeedle.setPivotPoint(.5f);
-        afrNeedle.setMinValue(110);
+        afrNeedle.setMinValue(111);
         afrNeedle.setMaxValue(220);
         afrNeedle.setMinDegrees(-180);
         afrNeedle.setMaxDegrees(90);
@@ -328,8 +335,6 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         gallery = (ProgramsGallery) findViewById(R.id.gallery);      
         mMiscText = (TextView) findViewById(R.id.misctext);
 
-//        mMiscText.setText("Miscellaneous Text goes here");
-        
 //        ChangeLog cl = new ChangeLog(this);
 //        if (cl.firstRun()) {
 //            cl.getLogDialog().show();
@@ -378,203 +383,9 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     	routineUpdateHandler.post(routineUpdate);
     	tpmsUpdateHandler.postDelayed(tpmsUpdate, TPMS_UPDATE_INTERVAL);
     	brightnessUpdateHandler.post(brightnessUpdate);
+    	musicUpdateHandler.post(musicUpdate);
     }
     
-	private long lastSongId = 0;
-
-	private Runnable routineUpdate = new Runnable() {
-    	
-
-		public void run() {
-
-			try {				
-				if (MusicService.getPosition() != 0) {
-					mPositionBar.setMax(MusicService.getCurrentItem().getDuration());
-					mPositionBar.setProgress(MusicService.getPosition());
-				} else {
-					mPositionBar.setMax(1);
-					mPositionBar.setProgress(0);
-				}
-				
-				if (MusicService.mState == MusicService.State.Playing) {
-					mPlayButton.setBackgroundResource(R.drawable.pauseicon);
-					if (lastSongId != MusicService.getCurrentItem().getId()) {
-						mArtworkImage.setImageBitmap(MusicService.getCurrentItem().getAlbumArt());
-						lastSongId = MusicService.getCurrentItem().getId();
-					}
-				} else {
-					mPlayButton.setBackgroundResource(R.drawable.playicon);
-				}
-			
-				// if obd isn't around don't bother
-				if (obd != null && obd.getHs() != null &&
-						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
-						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
-					
-					waterNeedle.setValue(obd.getCoolant());
-					voltageNeedle.setValue(obd.getVoltage() * 10);
-					mafNeedle.setValue(obd.getMaf());
-					afrNeedle.setValue(200 - (obd.getWideband() * 10) + 110);
-					iatNeedle.setValue(obd.getIat());
-					egtNeedle.setValue(obd.getEgt());
-									
-					if (obd.getFuel() > 0 && obd.getFuel() < 15f) {
-						if (mLowFuel.getVisibility() == View.INVISIBLE) {
-							mLowFuel.setVisibility(View.VISIBLE);
-							
-							if (lastFuelAlarm + 60000 < System.currentTimeMillis()) {
-								Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-								Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
-								r.play();
-								
-								lastFuelAlarm = System.currentTimeMillis();
-							}
-						} else {
-							mLowFuel.setVisibility(View.INVISIBLE);
-						}
-					} else {
-						if (mLowFuel.getVisibility() == View.VISIBLE) mLowFuel.setVisibility(View.INVISIBLE);
-					}
-				} else {
-					waterNeedle.setValue(180);
-					voltageNeedle.setValue(130);
-					mafNeedle.setValue(100);
-					afrNeedle.setValue(200 - 147 + 110);
-					iatNeedle.setValue(100);
-					egtNeedle.setValue(900);					
-				}
-			} catch (Exception ex) {
-				// do nothing -- null pointer likely from obd
-				mMiscText.setText(ex.getMessage() + " " + getStackTrace(ex));
-				Log.d(TAG, ex.getMessage() + " " + getStackTrace(ex));
-				
-			} finally {
-				routineUpdateHandler.postDelayed(this, ROUTINE_UPDATE_INTERVAL);					
-			}			
-		} 	
-    };
-    
-    private Runnable tpmsUpdate = new Runnable() {
-
-		public void run() {
-			
-			routineUpdateHandler.removeCallbacks(routineUpdate);
-			
-			try {				
-				if (obd != null && obd.getHs() != null &&
-						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
-						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
-					
-					obd.getHs().getEBT().sendATCommand2("ATSH000751");
-					
-					final String tpmsPresBuf = obd.getHs().getEBT().sendOBDCommand("22C9011");
-					final String tpmsTempBuf = obd.getHs().getEBT().sendOBDCommand("22C9021");
-					
-					// reset our connection to clear the headers -- need to figure out a better way
-					obd.getHs().getEBT().sendATCommand2("ATD");
-					
-					if (tpmsPresBuf != null && !tpmsPresBuf.contains("NO DATA")) {
-						try {
-							final String[] tpmsPres = tpmsPresBuf.split(" ");
-							
-							if (tpmsPres.length > 5) {
-								final float tpmsPres4 = Integer.parseInt(tpmsPres[tpmsPres.length - 2], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-								final float tpmsPres3 = Integer.parseInt(tpmsPres[tpmsPres.length - 3], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-								final float tpmsPres2 = Integer.parseInt(tpmsPres[tpmsPres.length - 4], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-								final float tpmsPres1 = Integer.parseInt(tpmsPres[tpmsPres.length - 5], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
-								
-								tpms1Needle.setValue(tpmsPres1 * 10);
-								tpms2Needle.setValue(tpmsPres2 * 10);
-								tpms3Needle.setValue(tpmsPres3 * 10);
-								tpms4Needle.setValue(tpmsPres4 * 10);
-							}
-						} catch (Exception ex) {
-							tpms1Needle.setValue(350);
-							tpms2Needle.setValue(350);
-							tpms3Needle.setValue(350);
-							tpms4Needle.setValue(350);
-						}
-					}
-					
-					if (tpmsTempBuf != null && !tpmsTempBuf.contains("NO DATA")) {
-						try {					
-							final String[] tpmsTemp = tpmsTempBuf.split(" ");
-							
-							if (tpmsTemp.length > 5) {
-								final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 40) + 32);
-								final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 40) + 32);
-								final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 40) + 32);
-								final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 40) + 32);
-								
-								temp1Needle.setValue(tpmsTemp1);
-								temp2Needle.setValue(tpmsTemp2);
-								temp3Needle.setValue(tpmsTemp3);
-								temp4Needle.setValue(tpmsTemp4);
-							}
-						} catch (Exception ex) {
-							temp1Needle.setValue(50);
-							temp2Needle.setValue(50);
-							temp3Needle.setValue(50);
-							temp4Needle.setValue(50);
-						}
-					}
-				} else {
-					tpms1Needle.setValue(350);
-					tpms2Needle.setValue(350);
-					tpms3Needle.setValue(350);
-					tpms4Needle.setValue(350);
-					
-					temp1Needle.setValue(50);
-					temp2Needle.setValue(50);
-					temp3Needle.setValue(50);
-					temp4Needle.setValue(50);					
-				}
-			} catch (Exception ex) {
-				mMiscText.setText(ex.getMessage() + " " + getStackTrace(ex));
-				Log.d(TAG, ex.getMessage() + " " + getStackTrace(ex));
-				
-			} finally {
-				routineUpdateHandler.postDelayed(routineUpdate, ROUTINE_UPDATE_INTERVAL);				
-				tpmsUpdateHandler.postDelayed(tpmsUpdate, TPMS_UPDATE_INTERVAL);
-			}
-		}
-	};
-    
-	public Runnable brightnessUpdate = new Runnable() {
-
-		public void run() {
-			
-			Calendar cal = Calendar.getInstance();
-			float brightness = .5f;
-			
-			// Winter
-			if (cal.get(Calendar.MONTH) >= Calendar.DECEMBER || cal.get(Calendar.MONTH) < Calendar.APRIL) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 17 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) <= 17 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
-			}			
-			// Spring
-			if (cal.get(Calendar.MONTH) >= Calendar.APRIL && cal.get(Calendar.MONTH) < Calendar.JULY) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;					
-			}				
-			// Summer
-			if (cal.get(Calendar.MONTH) >= Calendar.JULY && cal.get(Calendar.MONTH) < Calendar.OCTOBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 19 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) <= 19 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;
-			}				
-			// Fall
-			if (cal.get(Calendar.MONTH) >= Calendar.OCTOBER && cal.get(Calendar.MONTH) < Calendar.DECEMBER) {
-				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = 0f;
-				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = 1f;			
-			}       
-
-			WindowManager.LayoutParams lp = getWindow().getAttributes();
-			lp.screenBrightness = brightness;
-			getWindow().setAttributes(lp); 
-			
-			brightnessUpdateHandler.postDelayed(brightnessUpdate, BRIGHTNESS_UPDATE_INTERVAL);
-		}
-	};
 	
     @Override
     public void onPause() {
@@ -588,6 +399,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
     	routineUpdateHandler.removeCallbacks(routineUpdate);
     	tpmsUpdateHandler.removeCallbacks(tpmsUpdate);
     	brightnessUpdateHandler.removeCallbacks(brightnessUpdate);
+    	musicUpdateHandler.removeCallbacks(musicUpdate);
     }
 
     @Override
@@ -608,6 +420,44 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         inflater.inflate(R.menu.menu, menu);
         return true;
     }
+
+	public void onClick(View target) {
+		
+        if (target == mPlayButton) {
+
+        	if (MusicService.mState == MusicService.State.Paused) {
+        		startService(new Intent(MusicService.ACTION_PLAY));
+        	} else {
+        		if (MusicService.mState == MusicService.State.Playing) {
+        		startService(new Intent(MusicService.ACTION_PAUSE));
+        		} else {
+        			startService(new Intent(MusicService.ACTION_SKIP));
+        		}
+            }
+        }
+
+        if (target == mStopButton) {
+            startService(new Intent(MusicService.ACTION_STOP));
+        }
+        
+        if (target == mForwardButton) {
+        	startService(new Intent(MusicService.ACTION_SKIP));
+        }
+        
+        if (target == mRewindButton) {
+        	startService(new Intent(MusicService.ACTION_REWIND));
+        }
+
+        if (target == mMuteButton) {
+        	mMuted = ! mMuted;        	
+        	mAudioManager.setStreamMute(AudioManager.STREAM_MUSIC, mMuted);
+        	if (mMuted) {
+        		mMuteButton.setBackgroundResource(R.drawable.unmuteicon);
+        	} else {
+        		mMuteButton.setBackgroundResource(R.drawable.muteicon);
+        	}
+        }
+	}    
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
@@ -639,12 +489,8 @@ public class CarHomeActivity extends Activity implements OnClickListener {
         	case R.id.BTMenuItem:
         	    BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();    
         	    if (bt != null && !bt.isEnabled()) {
-           	    	try {
-						Thread.sleep(5000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-           	    	
+        	    	
+           	    	sleep(5000);
         	    	bt.enable();
 
         	    	if (obd != null) {
@@ -706,11 +552,235 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	        	    	.setNegativeButton("No", null)						//Do nothing on no
 	        	    	.show();
         		}
+        		return true;
+        	
+        	case R.id.debugMenuItem:
+        		item.setChecked(!item.isChecked());
+        		debugMode = item.isChecked();
+        		return false;
     
         	default:
                 return super.onOptionsItemSelected(item);
         }
     }
+
+	private Runnable musicUpdate = new Runnable() {
+
+		public void run() {
+			if (MusicService.getPosition() != 0) {
+				mPositionBar.setMax(MusicService.getCurrentItem().getDuration());
+				mPositionBar.setProgress(MusicService.getPosition());
+			} else {
+				mPositionBar.setMax(1);
+				mPositionBar.setProgress(0);
+			}
+			
+			if (MusicService.mState == MusicService.State.Playing) {
+				mPlayButton.setBackgroundResource(R.drawable.pauseicon);
+				if (lastSongId != MusicService.getCurrentItem().getId()) {
+					mArtworkImage.setImageBitmap(MusicService.getCurrentItem().getAlbumArt());
+					lastSongId = MusicService.getCurrentItem().getId();
+				}
+			} else {
+				mPlayButton.setBackgroundResource(R.drawable.playicon);
+			}
+
+			musicUpdateHandler.postDelayed(this, MUSIC_UPDATE_INTERVAL);					
+		}
+	};
+	
+	private Runnable routineUpdate = new Runnable() {
+    	
+		public void run() {
+
+			try {							
+				// if obd isn't around don't bother
+				if (obd != null && obd.getHs() != null &&
+						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
+						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
+					
+					// set our current routine values
+					waterNeedle.setValue(obd.getCoolant());
+					voltageNeedle.setValue(obd.getVoltage() * 10);
+					mafNeedle.setValue(obd.getMaf());
+					afrNeedle.setValue(200 - (obd.getWideband() * 10) + 110);
+					iatNeedle.setValue(obd.getIat());
+					egtNeedle.setValue(obd.getEgt());
+									
+					// if we're almost out of fuel do something
+					if (obd.getFuel() > 0 && obd.getFuel() < 10f) {
+						if (mLowFuel.getVisibility() == View.INVISIBLE) {
+							mLowFuel.setVisibility(View.VISIBLE);
+							
+							if (lastFuelAlarm + 60000 < System.currentTimeMillis()) {
+								Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+								Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+								r.play();
+								
+								lastFuelAlarm = System.currentTimeMillis();
+							}
+						} else {
+							mLowFuel.setVisibility(View.INVISIBLE);
+						}
+					} else {
+						if (mLowFuel.getVisibility() == View.VISIBLE) mLowFuel.setVisibility(View.INVISIBLE);
+					}
+				} else {
+					// we're not connected -- default all values
+					waterNeedle.setValue(180);
+					voltageNeedle.setValue(130);
+					mafNeedle.setValue(100);
+					afrNeedle.setValue(200 - 147 + 110);
+					iatNeedle.setValue(100);
+					egtNeedle.setValue(900);					
+				}
+			} catch (Exception ex) {
+				// do nothing -- null pointer likely from obd
+				logger(ex.getMessage() + " " + getStackTrace(ex));
+				
+			} finally {
+				// make sure we keep running
+				if (!tpmsUpdateRunning) routineUpdateHandler.postDelayed(this, ROUTINE_UPDATE_INTERVAL);					
+			}			
+		} 	
+    };
+    
+    private Runnable tpmsUpdate = new Runnable() {
+
+		public void run() {
+			
+			tpmsUpdateRunning = true;			
+			routineUpdateHandler.removeCallbacks(routineUpdate);
+			
+			try {		
+				if (obd != null && obd.getHs() != null &&
+						   obd.getHs().isOBDReady() && obd.getHs().getOBDSession() != null && 
+						   obd.getHs().getOBDSession().getCurrentState() >= OBD2Session.STATE_OBDCONNECTED) {
+					
+					// sleep for 250ms to ensure routineupdate isn't active
+					Thread.sleep(250);
+					
+					obd.getHs().getEBT().sendATCommand2("ATSH000751");
+					
+					final String tpmsPresBuf = obd.getHs().getEBT().sendOBDCommand("22C9011");
+					final String tpmsTempBuf = obd.getHs().getEBT().sendOBDCommand("22C9021");
+					
+					if (debugMode) {
+						obd.getHs().getEBT().sendATCommand2("ATD");
+						obd.getHs().getEBT().sendATCommand2("ATSH000650");
+						
+						final String c1 = obd.getHs().getEBT().sendOBDCommand("22A0211");
+						final String c2 = obd.getHs().getEBT().sendOBDCommand("22A0216");
+						
+						logger("c1: " + c1 + " c2: " + c2);
+					}
+					
+					// reset our connection to clear the headers -- need to figure out a better way
+					obd.getHs().getEBT().sendATCommand2("ATD");
+					
+					if (tpmsPresBuf != null && !tpmsPresBuf.contains("NO DATA")) {
+						try {
+							final String[] tpmsPres = tpmsPresBuf.split(" ");
+							
+							if (tpmsPres.length > 5) {
+								final float tpmsPres4 = Integer.parseInt(tpmsPres[tpmsPres.length - 2], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres3 = Integer.parseInt(tpmsPres[tpmsPres.length - 3], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres2 = Integer.parseInt(tpmsPres[tpmsPres.length - 4], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								final float tpmsPres1 = Integer.parseInt(tpmsPres[tpmsPres.length - 5], 16) * 1.373f * KPI_TO_PSI_MULTIPLIER;
+								
+								tpms1Needle.setValue(tpmsPres1 * 10);
+								tpms2Needle.setValue(tpmsPres2 * 10);
+								tpms3Needle.setValue(tpmsPres3 * 10);
+								tpms4Needle.setValue(tpmsPres4 * 10);
+							}
+						} catch (Exception ex) {
+							tpms1Needle.setValue(350);
+							tpms2Needle.setValue(350);
+							tpms3Needle.setValue(350);
+							tpms4Needle.setValue(350);
+						}
+					}
+					
+					if (tpmsTempBuf != null && !tpmsTempBuf.contains("NO DATA")) {
+						try {					
+							final String[] tpmsTemp = tpmsTempBuf.split(" ");
+							
+							if (tpmsTemp.length > 5) {
+								final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 40) + 32);
+								final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 40) + 32);
+								final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 40) + 32);
+								final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 40) + 32);
+								
+								temp1Needle.setValue(tpmsTemp1);
+								temp2Needle.setValue(tpmsTemp2);
+								temp3Needle.setValue(tpmsTemp3);
+								temp4Needle.setValue(tpmsTemp4);
+							}
+						} catch (Exception ex) {
+							temp1Needle.setValue(50);
+							temp2Needle.setValue(50);
+							temp3Needle.setValue(50);
+							temp4Needle.setValue(50);
+						}
+					}
+				} else {
+					tpms1Needle.setValue(350);
+					tpms2Needle.setValue(350);
+					tpms3Needle.setValue(350);
+					tpms4Needle.setValue(350);
+					
+					temp1Needle.setValue(50);
+					temp2Needle.setValue(50);
+					temp3Needle.setValue(50);
+					temp4Needle.setValue(50);					
+				}
+			} catch (Exception ex) {
+				logger(ex.getMessage() + " " + getStackTrace(ex));
+				
+			} finally {
+				routineUpdateHandler.postDelayed(routineUpdate, ROUTINE_UPDATE_INTERVAL);				
+
+				tpmsUpdateRunning = false;
+				tpmsUpdateHandler.postDelayed(tpmsUpdate, TPMS_UPDATE_INTERVAL);
+			}
+		}
+	};
+    
+	public Runnable brightnessUpdate = new Runnable() {
+
+		public void run() {
+			
+			Calendar cal = Calendar.getInstance();
+			float brightness = .5f;
+			
+			// Winter
+			if (cal.get(Calendar.MONTH) >= Calendar.DECEMBER || cal.get(Calendar.MONTH) < Calendar.APRIL) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 17 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = BRIGHTNESS_MINIMUM;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 17 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = BRIGHTNESS_MAXIMUM;
+			}			
+			// Spring
+			if (cal.get(Calendar.MONTH) >= Calendar.APRIL && cal.get(Calendar.MONTH) < Calendar.JULY) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = BRIGHTNESS_MINIMUM;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = BRIGHTNESS_MAXIMUM;					
+			}				
+			// Summer
+			if (cal.get(Calendar.MONTH) >= Calendar.JULY && cal.get(Calendar.MONTH) < Calendar.OCTOBER) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 19 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = BRIGHTNESS_MINIMUM;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 19 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = BRIGHTNESS_MAXIMUM;
+			}				
+			// Fall
+			if (cal.get(Calendar.MONTH) >= Calendar.OCTOBER && cal.get(Calendar.MONTH) < Calendar.DECEMBER) {
+				if (cal.get(Calendar.HOUR_OF_DAY) > 18 || cal.get(Calendar.HOUR_OF_DAY) <= 6) brightness = BRIGHTNESS_MINIMUM;
+				if (cal.get(Calendar.HOUR_OF_DAY) <= 18 && cal.get(Calendar.HOUR_OF_DAY) > 6) brightness = BRIGHTNESS_MAXIMUM;			
+			}       
+
+			WindowManager.LayoutParams lp = getWindow().getAttributes();
+			lp.screenBrightness = brightness;
+			getWindow().setAttributes(lp); 
+			
+			brightnessUpdateHandler.postDelayed(brightnessUpdate, BRIGHTNESS_UPDATE_INTERVAL);
+		}
+	};
 	
 	public static void toggleCamera() {
 		if (camera == null) {
@@ -777,51 +847,13 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 		    public void surfaceChanged(SurfaceHolder holder, int format,
 		                               int width, int height) {
-		    	Log.d(TAG, "surfaceChanged");
+		    	logger("surfaceChanged");
 		    }
 
 		    public void surfaceDestroyed(SurfaceHolder holder) {
 		      // no-op
 		    }
 		  };
-	
-	public void onClick(View target) {
-		
-        if (target == mPlayButton) {
-
-        	if (MusicService.mState == MusicService.State.Paused) {
-        		startService(new Intent(MusicService.ACTION_PLAY));
-        	} else {
-        		if (MusicService.mState == MusicService.State.Playing) {
-        		startService(new Intent(MusicService.ACTION_PAUSE));
-        		} else {
-        			startService(new Intent(MusicService.ACTION_SKIP));
-        		}
-            }
-        }
-
-        if (target == mStopButton) {
-            startService(new Intent(MusicService.ACTION_STOP));
-        }
-        
-        if (target == mForwardButton) {
-        	startService(new Intent(MusicService.ACTION_SKIP));
-        }
-        
-        if (target == mRewindButton) {
-        	startService(new Intent(MusicService.ACTION_REWIND));
-        }
-
-        if (target == mMuteButton) {
-        	mMuted = ! mMuted;        	
-        	mAudioManager.setStreamMute(AudioManager.STREAM_MUSIC, mMuted);
-        	if (mMuted) {
-        		mMuteButton.setBackgroundResource(R.drawable.unmuteicon);
-        	} else {
-        		mMuteButton.setBackgroundResource(R.drawable.muteicon);
-        	}
-        }
-	}    
 	
 	public static void whereAreYou(final String origin) {
 		
@@ -862,7 +894,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			handler.postDelayed(doItAgain, 30000);
 			
 		} else {
-			Log.d(TAG, "aborting mms request - connectivity intent already exists");
+			logger("aborting mms request - connectivity intent already exists");
 		}
 	}
 
@@ -890,7 +922,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 			if (!fired && System.currentTimeMillis() - startTime >= 3000) {
 				fired = true;
 				
-				Log.d(TAG, "taking picture");
+				logger("taking picture");
 
 				camera.stopPreview();
 				camera.takePicture(null, null, new CameraPictureCallback());
@@ -902,7 +934,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 
 		public void onPictureTaken(byte[] data, Camera camera) {
 
-			Log.d(TAG, "picture taken");
+			logger("picture taken");
 
 			stopCameraPreview();	
 			
@@ -910,13 +942,13 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	        wifiEnabled = wifi.isWifiEnabled();
 	        wifi.setWifiEnabled(false);
 	        
-	        Log.d(TAG, "wifi disabled - was enabled=" + wifiEnabled);
+	        logger("wifi disabled - was enabled=" + wifiEnabled);
 
 			final ConnectivityManager connMgr = (ConnectivityManager)ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
 	        final int result = connMgr.startUsingNetworkFeature( ConnectivityManager.TYPE_MOBILE, FEATURE_ENABLE_MMS);
 	        
 	        if (result != APN_ALREADY_ACTIVE) {
-				Log.d(TAG, "registering connectivity intent");
+				logger("registering connectivity intent");
 	        	final IntentFilter filter = new IntentFilter();
 	        	filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
 	        	connectivityActionReceiver = new ConnectivityActionReceiver(data, activeCamera == CameraInfo.CAMERA_FACING_FRONT ? 50 : 10); 	
@@ -961,7 +993,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		        return;
 		    } else {
 		    	//send mms
-				Log.d(TAG, "intent reports MMS ready");
+				logger("intent reports MMS ready");
 				SendMmsPicture worker = new SendMmsPicture(data, quality);
 				worker.start();
  		    }
@@ -981,7 +1013,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		
 		public void run() {
 
-			Log.d(TAG, "sending mms message");
+			logger("sending mms message");
 			
 	        final SendReq sendRequest = new SendReq();
 //	        final EncodedStringValue[] sub = EncodedStringValue.extract("What I'm doing. . .");
@@ -1021,7 +1053,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	        	for (APN apn : apns) {
 					HttpUtils.httpConnection(ctx, 4444L, apn.MMSCenterUrl,
 					        bytesToSend, HttpUtils.HTTP_POST_METHOD, true, apn.MMSProxy, Integer.parseInt(apn.MMSPort));
-					Log.d(TAG, "mms message sent");					
+					logger("mms message sent");					
 	        	}	
 
 			} catch (IOException e) {
@@ -1035,12 +1067,12 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 					final ConnectivityManager connMgr = (ConnectivityManager)ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
 					connMgr.stopUsingNetworkFeature( ConnectivityManager.TYPE_MOBILE, FEATURE_ENABLE_MMS);
 
-					Log.d(TAG,"unregistered connectivity intent");
+					logger("unregistered connectivity intent");
 					
 			        WifiManager wifi = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
 			        wifi.setWifiEnabled(wifiEnabled);
 			        
-			        Log.d(TAG, "wifi enabled=" + wifiEnabled);
+			        logger("wifi enabled=" + wifiEnabled);
 				}
 			}
 		}
@@ -1049,6 +1081,7 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 	public static void rebootWithSU() {
 		try {
 			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","ls"});
+			sleep(2500);
 			Runtime.getRuntime().exec(new String[]{"/system/xbin/su","-c","reboot now"});
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -1069,5 +1102,10 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 		ex.printStackTrace(printWriter);
 		
 		return result.toString();
+	}
+	
+	private static void logger(final String msg) {
+		logger(msg);
+		if (debugMode) mMiscText.setText(String.format("%s\n%s", msg, mMiscText.getText()));
 	}
 }

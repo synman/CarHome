@@ -6,5 +6,6 @@
     <string name="menu_camera">Camera View</string>
     <string name="menu_quit">Exit RX-8 Home</string>
     <string name="menu_cel">Manage CELs</string>
+    <string name="menu_debug">Debug Mode</string>
 
 </resources>
