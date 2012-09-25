@@ -110,7 +110,7 @@ public class MusicRetriever {
 	    	        artwork = BitmapFactory.decodeStream(in);
 	    	        artworkSize = artwork.getByteCount();
 	    	        lastAlbumId = albumId;
-	    		} catch (FileNotFoundException e) {
+	    		} catch (Exception e) {
 	    			artworkSize = 0;
 	    			lastAlbumId = 0;
 	    		}

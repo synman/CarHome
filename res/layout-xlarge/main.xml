@@ -15,20 +15,20 @@
 
     <Button
         android:id="@+id/playbutton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:background="@drawable/playicon"
         android:freezesText="true" 
         android:layout_centerHorizontal="true" 
         android:layout_alignParentBottom="true" 
         android:layout_marginLeft="10dp" 
         android:layout_marginRight="10dp" 
-        android:layout_marginBottom="10dp"/>
+        android:layout_marginBottom="30dp"/>
 
     <Button
         android:id="@+id/forwardbutton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:background="@drawable/forwardicon"
         android:freezesText="true" 
         android:layout_toRightOf="@id/playbutton" 
@@ -36,8 +36,8 @@
     
     <Button
         android:id="@+id/rewindbutton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_alignBottom="@+id/playbutton"
         android:layout_toLeftOf="@+id/playbutton"
         android:background="@drawable/rewindicon"
@@ -45,8 +45,8 @@
 
     <Button
         android:id="@+id/stopbutton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_toLeftOf="@+id/rewindbutton"
         android:background="@drawable/stopicon"
         android:freezesText="true" 
@@ -55,8 +55,8 @@
 
     <Button
         android:id="@+id/mutebutton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_toRightOf="@+id/forwardbutton"
         android:background="@drawable/muteicon"
         android:freezesText="true" 
@@ -69,15 +69,14 @@
         android:layout_height="wrap_content"
         android:layout_above="@+id/playbutton"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="10dp" android:minWidth="300dp" android:maxWidth="300dp" android:max="100" android:progress="0"/>
+        android:layout_marginBottom="20dp" android:minWidth="500dp" android:maxWidth="500dp" android:max="100" android:progress="0"/>
 
     <ImageView
         android:id="@+id/artwork"
-        android:layout_width="85dp"
-        android:layout_height="85dp"
-        android:layout_alignParentBottom="true"
-        android:layout_marginRight="20dp"
-        android:layout_marginBottom="10dp"
+        android:layout_width="125dp"
+        android:layout_height="125dp"
+        android:layout_alignTop="@+id/position"
+        android:layout_marginRight="50dp"
         android:layout_toLeftOf="@+id/position"
         android:scaleType="fitXY"
         android:scrollbarAlwaysDrawHorizontalTrack="false" />
@@ -93,11 +92,11 @@
 	    android:layout_height="wrap_content">
     
 		<RelativeLayout
-		    android:id="@+id/watermeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-		    android:layout_marginTop="10dp"
-		    android:layout_alignParentTop="true">
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginLeft="20dp" 
+		    android:layout_marginTop="20dp" 
+		    android:id="@+id/watermeter">
 	
 		    <ImageView
 			    android:id="@+id/watertemp"
@@ -119,11 +118,12 @@
 		</RelativeLayout>
 		
 		<RelativeLayout
-		    android:id="@+id/intakemeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-		    android:layout_below="@id/watermeter"
-		    android:layout_marginTop="10dp" >
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginLeft="20dp" 
+		    android:layout_marginTop="20dp" 
+		    android:id="@+id/intakemeter" 
+		    android:layout_below="@id/watermeter">
 	
 		    <ImageView
 			    android:id="@+id/iat"
@@ -146,8 +146,8 @@
 
 		<RelativeLayout
 		    android:id="@+id/afrmeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp" 
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
 		    android:layout_centerHorizontal="true">
 	
 		    <ImageView
@@ -170,12 +170,12 @@
 		</RelativeLayout>
 							
 		<RelativeLayout
-		    android:id="@+id/tpmsmeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-		    android:layout_centerVertical="true"
-		    android:layout_marginLeft="20dp"
-		    android:layout_toRightOf="@id/afrmeter" >
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:id="@+id/tpmsmeter" 
+		    android:layout_marginTop="100dp" 
+		    android:layout_marginLeft="-10dp" 
+		    android:layout_toRightOf="@id/afrmeter">
 
 		    <ImageView
 			    android:id="@+id/tpmsgauge"
@@ -221,12 +221,11 @@
 		</RelativeLayout>
 	
 		<RelativeLayout
-		    android:id="@+id/tiremeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-		    android:layout_centerVertical="true"
-		    android:layout_marginRight="20dp"
-		    android:layout_toLeftOf="@id/afrmeter" >
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:id="@+id/tiremeter" 
+		    android:layout_marginTop="100dp" 
+		    android:layout_toLeftOf="@id/afrmeter" android:layout_marginRight="-10dp">
 	
 		    <ImageView
 			    android:id="@+id/tiregauge"
@@ -273,9 +272,10 @@
 						
 		<RelativeLayout
 		    android:id="@+id/voltmeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-   		    android:layout_marginTop="10dp"
+		    android:layout_width="175dp"
+		    android:layout_height="175dp"
+		    android:layout_marginTop="20dp"
+		    android:layout_marginRight="20dp"
 		    android:layout_alignParentRight="true">
 	
 		    <ImageView
@@ -299,11 +299,9 @@
 		
 		<RelativeLayout
 		    android:id="@+id/egtmeter"
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"
-		    android:layout_marginTop="5dp" 
-		    android:layout_centerHorizontal="true" 
-		    android:layout_below="@id/afrmeter">
+		    android:layout_width="175dp"
+		    android:layout_height="175dp"
+		    android:layout_marginTop="20dp" android:layout_centerHorizontal="true" android:layout_below="@id/afrmeter">
 
 		    <ImageView
 			    android:id="@+id/egt"
@@ -325,9 +323,10 @@
 		</RelativeLayout>	
 							
 		<RelativeLayout
-		    android:layout_width="100dp"
-		    android:layout_height="100dp"  
-		    android:layout_marginTop="10dp" 
+		    android:layout_width="175dp"
+		    android:layout_height="175dp" 
+		    android:layout_marginRight="20dp" 
+		    android:layout_marginTop="20dp" 
 		    android:id="@+id/mafmeter" 
 		    android:layout_alignParentRight="true"
 		    android:layout_below="@id/voltmeter">
@@ -355,8 +354,8 @@
 		
 	<ImageView
 	    android:id="@+id/imageView1"
-	    android:layout_width="75dp"
-	    android:layout_height="75dp"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
 	    android:layout_alignParentBottom="true"
 	    android:layout_alignParentRight="true"
 	    android:src="@drawable/rx8_logo" />
@@ -386,6 +385,6 @@
     <ImageView
         android:id="@+id/lowfuel"
         android:layout_width="wrap_content"
-        android:src="@drawable/lowfuel" android:layout_height="50dp" android:layout_centerInParent="true" android:visibility="invisible"/>
+        android:src="@drawable/lowfuel" android:layout_height="75dp" android:layout_centerInParent="true" android:visibility="invisible"/>
     		
  </RelativeLayout>
