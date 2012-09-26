@@ -706,10 +706,10 @@ public class CarHomeActivity extends Activity implements OnClickListener {
 							final String[] tpmsTemp = tpmsTempBuf.split(" ");
 							
 							if (tpmsTemp.length > 5) {
-								final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 40) + 32);
-								final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 40) + 32);
-								final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 40) + 32);
-								final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 40) + 32);
+								final float tpmsTemp4 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 2], 16) - 55) + 32);
+								final float tpmsTemp3 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 3], 16) - 55) + 32);
+								final float tpmsTemp2 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 4], 16) - 55) + 32);
+								final float tpmsTemp1 = (float) (1.8 * (Integer.parseInt(tpmsTemp[tpmsTemp.length - 5], 16) - 55) + 32);
 								
 								temp1Needle.setValue(tpmsTemp1);
 								temp2Needle.setValue(tpmsTemp2);
